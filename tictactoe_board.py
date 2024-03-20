@@ -35,7 +35,7 @@ class TicTacToeBoard(GameBoard):
             + self.counting_connected(judge_cells, other_cells, x + dx, y + dy, dx, dy) \
             + self.counting_connected(judge_cells, other_cells, x - dx, y - dy, -dx, -dy)
 
-    def judge_last_action(self):
+    def judge_last_action(self)->(bool, GameRelativeResult):
         '''
         最後に打った手による勝敗を判定する
         '''

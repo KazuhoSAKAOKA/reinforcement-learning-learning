@@ -92,12 +92,12 @@ def train_network_tictactoe(epochs=RN_EPOCHS):
 
 if __name__ == '__main__':
     dual_network()
-    train_cycle(MODEL_FILE_BEST, './model/tictactoe', HISTORY_FOLDER, TicTacToeBoard(), 500, 200, 2)
+    train_cycle(MODEL_FILE_BEST, './model/tictactoe', HISTORY_FOLDER, TicTacToeBoard(), 500, 200, 4)
 
     board = TicTacToeBoard()
     player = Agent(ConsoleDebugBrain())
     model = load_model(MODEL_FILE_BEST)
-    network_agent = Agent(NetworkBrain(0.0, 50, lambda x: predict(model, x), lambda x: predict(model, x)))
+    network_agent = Agent(NetworkBrain(0.0, 200, lambda x: predict(model, x), lambda x: predict(model, x)))
     env = GameEnv(board, player, network_agent)
     r = env.play()
     print(r)

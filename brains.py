@@ -1,12 +1,12 @@
 import numpy as np
-
+from game_board import GameBoard
 
 class ConsoleDebugBrain:
     def __init__(self):
         pass
     def get_name(self):
         return "ConsoleDebugBrain"
-    def select_action(self, board):
+    def select_action(self, board : GameBoard)->int:
         print("First player's turn" if board.is_first_player_turn() else "Second player's turn")
         print(board)
         actions = board.get_legal_actions()
@@ -21,6 +21,6 @@ class RandomBrain:
         pass
     def get_name(self):
         return "RandomBrain"
-    def select_action(self, board):
+    def select_action(self, board : GameBoard)->int:
         actions = board.get_legal_actions()
         return np.random.choice(actions)

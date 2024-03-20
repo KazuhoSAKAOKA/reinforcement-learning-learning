@@ -1,6 +1,6 @@
-from game_board import GameRelativeResult
+from game_board import GameBoard, GameRelativeResult
 
-def evaluate_board_to_final(board, depth):
+def evaluate_board_to_final(board : GameBoard, depth):
     '''
     ゲームの終了までの状態を評価する
     '''
@@ -52,7 +52,7 @@ class MiniMaxBrain:
         self.name = "MiniMax"
     def get_name(self):
         return self.name
-    def select_action(self, board):
+    def select_action(self, board: GameBoard)->int:
         best_action = 0
         best_score = -float('inf')
         str = ['','']
@@ -74,7 +74,7 @@ class AlphaBetaBrain:
         self.name = "AlphaBetaBrain"
     def get_name(self):
         return self.name
-    def select_action(self, board):
+    def select_action(self, board : GameBoard)->int:
         best_action = 0
         alpha = -float('inf')
         #str = ['','']

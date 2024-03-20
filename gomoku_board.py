@@ -50,24 +50,7 @@ class GomokuBoard(GameBoard):
     def get_model_state(self):
         return np.array([self.self_cells, self.enemy_cells])
 
-        '''
-    def transit_next(self, action):
-        次の状態を返す
-        x = action % self.board_size
-        y = action // self.board_size
-        if self.self_cells[y][x] != 0 or self.enemy_cells[y][x] != 0:
-            return False, self
-        next = GomokuBoard()
-        next.self_cells = self.enemy_cells.copy()
-        next.enemy_cells = self.self_cells.copy()
-        next.enemy_cells[y][x] = 1
-        next.board_size = self.board_size
-        next.turn = self.turn + 1
-        next.last_action = action
-        return True, next
-        '''
-
-    def counting_connected(self, judge_cells, other_cells, x, y, dx, dy, to_front, series):
+    def counting_connected(self, judge_cells, other_cells, x, y, dx, dy, to_front, series)->StoneSeries:
         '''
         接続している石の数を数える。
         とび石がある場合は、それを考慮する。
@@ -97,7 +80,7 @@ class GomokuBoard(GameBoard):
             series.extend(to_front)
         return self.counting_connected(judge_cells, other_cells, x + dx, y + dy, dx, dy, to_front, series)
     
-    def get_line_series(self, judge_cells, other_cells, x, y, direction):
+    def get_line_series(self, judge_cells, other_cells, x, y, direction)->StoneSeries:
         '''
         指定した石の指定した方向への並びの種類、ここでは５連や４連等の情報を返す
         '''
@@ -111,7 +94,7 @@ class GomokuBoard(GameBoard):
         series = self.counting_connected(judge_cells, other_cells, x - dx, y - dy, -dx, -dy, False, series)
         return series
     
-    def judge_last_action(self):
+    def judge_last_action(self)->(bool, GameRelativeResult):
         '''
         最後に打った手による勝敗を判定する
 

@@ -106,7 +106,7 @@ def self_play(model_file, history_folder, board, temperature, repeat_count, gamm
         second_agent.brain.update_history(-value, gamma)
         history.extend(first_agent.brain.history)
         history.extend(second_agent.brain.history)
-        history.append([board.get_model_state(), [0] * board.get_output_size(), value])
+        #history.append([board.get_model_state(), [0] * board.get_output_size(), value])
 
     first_agent = Agent(SelfplayNetworkBrain(temperature, 10, lambda x: predict(model, x), lambda x: predict(model, x)))
     second_agent = Agent(SelfplayNetworkBrain(temperature, 10, lambda x: predict(model, x), lambda x: predict(model, x)))

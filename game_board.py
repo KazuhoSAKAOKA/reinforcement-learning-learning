@@ -18,15 +18,14 @@ def get_first_player_value(result :GameResult) -> int:
         return -1
     else:
         return 0
-
 class GameBoard:
-    def __init__(self, board_size, turn = 0, last_action = None):
+    def __init__(self, board_size : int, turn: int = 0 , last_action : int = -1):
         self.self_cells = np.zeros((board_size, board_size), dtype=np.int8)
         self.enemy_cells = np.zeros((board_size, board_size), dtype=np.int8)
-        self.board_size = board_size
-        self.turn = turn
-        self.last_action = last_action
-    def get_turn(self):
+        self.board_size : int = board_size
+        self.turn  : int = turn
+        self.last_action  : int = last_action
+    def get_turn(self)->int:
         return self.turn
     def reset(self):
         self.self_cells = np.zeros((self.board_size, self.board_size), dtype=np.int8)
@@ -45,13 +44,13 @@ class GameBoard:
         x = [self.self_cells.reshape(self.board_size*self.board_size,).tolist(), self.enemy_cells.reshape(self.board_size*self.board_size,).tolist()]
         return x
 
-    def get_model_input_shape(self):
+    def get_model_input_shape(self)->np.ndarray:
         x = np.reshape([self.self_cells, self.enemy_cells], (2, self.board_size, self.board_size))
         x = x.transpose(1, 2, 0)
         x = x.reshape(1, self.board_size, self.board_size, 2)
         return x
     
-    def convert_history_to_model_input(self, history):
+    def convert_history_to_model_input(self, history)->(np.ndarray, np.ndarray, np.ndarray):
         xs, y_policies, y_values = zip(*history)
         xs = np.array(xs)
         a,b,c = (self.board_size, self.board_size, 2)
@@ -60,7 +59,7 @@ class GameBoard:
         y_values = np.array(y_values)
         return xs, y_policies, y_values
 
-    def transit_next(self, action):
+    def transit_next(self, action)->(bool, 'GameBoard'):
         '''
         次の状態を返す
         '''
@@ -77,14 +76,14 @@ class GameBoard:
         next.last_action = action
         return True, next
 
-    def is_first_player_turn(self):
+    def is_first_player_turn(self)->bool:
         return self.turn % 2 == 0
-    def is_second_player_turn(self):
+    def is_second_player_turn(self)->bool:
         return not self.is_first_player_turn()
-    def is_first_player_last_operated(self):
+    def is_first_player_last_operated(self)->bool:
         return not self.is_first_player_turn()
     
-    def convert_to_result(self, relative_result):
+    def convert_to_result(self, relative_result : GameRelativeResult)->GameResult:
         if relative_result == GameRelativeResult.win_last_play_player:
             if self.is_first_player_last_operated():
                 return GameResult.win_first_player
@@ -125,7 +124,7 @@ class GameBoard:
                 else:
                     print("-", end="")
             print("") 
-    def get_legal_actions(self):
+    def get_legal_actions(self)->np.ndarray:
         '''
         空いているマスのリストを返す
         '''
@@ -135,7 +134,7 @@ class GameBoard:
                 if self.self_cells[i][j] == 0 and self.enemy_cells[i][j] == 0:
                     actions = np.append(actions, i * self.board_size + j)
         return actions
-    def get_legal_actions_ratio(self):
+    def get_legal_actions_ratio(self)->np.ndarray:
         '''
         行動可能なアクションを1.0,不可能なアクションを0.0とした配列を返す
         '''
@@ -143,5 +142,11 @@ class GameBoard:
         for i in range(self.board_size):
             for j in range(self.board_size):
                 if self.self_cells[i][j] == 0 and self.enemy_cells[i][j] == 0:
-                    actions[i][j] = 1.0
+                    actions[i * self.board_size + j] = 1.0
         return actions
+
+    def judge_last_action(self)->(bool, GameRelativeResult):
+        Exception("Not implemented")
+    def is_done(self)->bool:
+        done, _ = self.judge_last_action()
+        return done

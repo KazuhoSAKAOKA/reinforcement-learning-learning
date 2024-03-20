@@ -3,14 +3,26 @@
 # ====================
 
 # パッケージのインポート
-from game_board import GameRelativeResult
+from game_board import GameBoard, GameRelativeResult
 from math import sqrt
 import numpy as np
 
 # パラメータの準備
 PV_EVALUATE_COUNT = 50 # 1推論あたりのシミュレーション回数（本家は1600）
-C_PUCT = 2.5
+#C_PUCT = 2.5
+C_BASE = 19652
+C_INIT = 1.25
+ALPHA = 0 # 0.3
+EPSILON = 0 #0.25
 
+class Parameter:
+    def __init__(self, c_base : float, c_init : float, alpha : float, epsilon : float):
+        self.c_base = c_base
+        self.c_init = c_init
+        self.alpha = alpha
+        self.epsilon = epsilon
+
+parameter = Parameter(C_BASE, C_INIT, ALPHA, EPSILON)
 
 # ボルツマン分布
 def boltzman(xs, temperature):
@@ -25,11 +37,11 @@ def nodes_to_scores(nodes):
     return scores
 
 # モンテカルロ木探索のスコアの取得
-def pv_mcts_scores(board, temperature, evaluate_count, predict_alpha, predict_beta):
+def pv_mcts_scores(board : GameBoard, temperature : float, evaluate_count : int, predict_alpha, predict_beta):
     # モンテカルロ木探索のノードの定義
     class Node:
         # ノードの初期化
-        def __init__(self, board, p, predict_alpha, predict_beta):
+        def __init__(self, board, p, predict_alpha, predict_beta, is_root = False):
             self.board = board # 状態
             self.p = p # 方策
             self.w = 0 # 累計価値
@@ -37,6 +49,7 @@ def pv_mcts_scores(board, temperature, evaluate_count, predict_alpha, predict_be
             self.child_nodes = None  # 子ノード群
             self.predict_alpha = predict_alpha
             self.predict_beta = predict_beta
+            self.is_root = is_root
         # 局面の価値の計算
         def evaluate(self):
             # ゲーム終了時
@@ -88,26 +101,34 @@ def pv_mcts_scores(board, temperature, evaluate_count, predict_alpha, predict_be
             t = sum(nodes_to_scores(self.child_nodes))
             pucb_values = []
 
-            #if self.board.get_turn() == 0:
-            #    print("=====================arc value=================")
-            for child_node in self.child_nodes:
-                value1 = (-child_node.w / child_node.n if child_node.n else 0.0)
-                value2 = C_PUCT * child_node.p * sqrt(t) / (1 + child_node.n)
-                arc_value = value1 + value2
+            if self.is_root and parameter.alpha > 0:
+                noises = np.random.dirichlet([parameter.alpha] * len(self.child_nodes))
+
+            #if self.board.get_turn() == 4:
+            #    print("============================ begin arc value ============================ ")
+            for i, child_node in enumerate(self.child_nodes):
+                q_value = (-child_node.w / child_node.n if child_node.n else 0.0)
+                #value2 = C_PUCT * child_node.p * sqrt(t) / (1 + child_node.n)
+                cs = np.log((1 + t + parameter.c_base) / parameter.c_base) + parameter.c_init
+                p = child_node.p
+                if self.is_root and parameter.alpha > 0:
+                    p = (1 - parameter.epsilon) * p + parameter.epsilon * noises[i]
+                u_value = cs * child_node.p * sqrt(t) / (1 + child_node.n)
+                arc_value = q_value + u_value
                 pucb_values.append(arc_value)
-            #    if self.board.get_turn() == 0:
+            #    if self.board.get_turn() == 4:
             #        print("========== arc value ==========")
             #        print(child_node.board)
-            #        print("policy:{0}, v={1}, w={2}, n={3}, v1:{4},v2:{5}".format(child_node.p, arc_value, child_node.w, child_node.n, value1, value2))
-            #        print("========== ========= ==========")
+            #        print("policy:{0}, v={1}, w={2}, n={3}, v1:{4},v2:{5}".format(child_node.p, arc_value, child_node.w, child_node.n, q_value, u_value))
+            #        print("===============================")
             # アーク評価値が最大の子ノードを返す
             max_pucb_index = np.argmax(pucb_values)
-            #if self.board.get_turn() == 0:
-            #    print("selected action:{0}".format(max_pucb_index))
+            #if self.board.get_turn() == 4:
+            #    print("============================ selected action:{0} ============================ ".format(max_pucb_index))
             return self.child_nodes[max_pucb_index]
 
     # 現在の局面のノードの作成
-    root_node = Node(board, 0, predict_alpha, predict_beta)
+    root_node = Node(board, 0, predict_alpha, predict_beta, True)
 
     # 複数回の評価の実行
     for _ in range(evaluate_count):
