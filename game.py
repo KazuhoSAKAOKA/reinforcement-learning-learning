@@ -1,6 +1,7 @@
 from game_board import GameBoard, GameRelativeResult, GameResult
 from agent import Agent
 from typing import Callable
+from typing import Tuple
 
 def do_empty1(board : GameBoard):
     pass
@@ -57,7 +58,7 @@ class GameEnv:
         self.episode_callback(self.index, current, absolute_result)
         return absolute_result
     
-    def play_n(self, n: int) -> (int, int, int):
+    def play_n(self, n: int) -> Tuple[int, int, int]:
         self.index = 0
         first_player_win = 0
         second_player_win = 0

@@ -8,15 +8,19 @@ from pathlib import Path
 import numpy as np
 import pickle
 import os
+import shutil
+
 from game_board import GameBoard, get_first_player_value
-from tictactoe_board import TicTacToeBoard
 from pv_mcts import pv_mcts_scores
 from game import GameEnv
 from agent import Agent
 from brains import RandomBrain
 from montecarlo import MonteCarloBrain
+from typing import Callable
+from parameter import PARAM
+from typing import Tuple
 
-def write_data(folder, history):
+def write_data(folder:str, history):
     now = datetime.now()
     folder = '{0}/'.format(folder)
     os.makedirs(folder, exist_ok=True)
@@ -24,9 +28,8 @@ def write_data(folder, history):
     with open(path, mode='wb') as f:
         pickle.dump(history, f)
 
-
 # 推論
-def predict(model, board):
+def predict(model : Model, board : GameBoard)->Tuple[np.ndarray, float]:
     # 推論のための入力データのシェイプの変換
     x = board.get_model_input_shape()
 
@@ -42,7 +45,7 @@ def predict(model, board):
     return policies, value
 
 class SelfplayNetworkBrain:
-    def __init__(self, temperature, evaluate_count, self_predict, enemy_predict):
+    def __init__(self, temperature : float, evaluate_count : int, self_predict :Callable[[Model, GameBoard], Tuple[np.ndarray, float]] , enemy_predict:Callable[[Model, GameBoard], Tuple[np.ndarray, float]]):
         self.temperature = temperature
         self.evaluate_count = evaluate_count
         self.history = []
@@ -51,7 +54,7 @@ class SelfplayNetworkBrain:
     def get_name(self):
         return "SelfplayNetworkBrain"
     
-    def select_action(self, board):
+    def select_action(self, board : GameBoard)->int:
         scores = pv_mcts_scores(board, self.temperature, self.evaluate_count, self.self_predict, self.enemy_predict)
         policies = [0] * board.get_output_size()
         for action, policy in zip(board.get_legal_actions(), scores):
@@ -59,16 +62,16 @@ class SelfplayNetworkBrain:
         self.history.append([board.get_model_state(), policies, None])
         action = np.random.choice(board.get_legal_actions(), p=scores)
         return action
-    def update_history(self, value, gammma):
+    def update_history(self, value):
         i = len(self.history) - 1
         while i >= 0:
             self.history[i][2] = value
-            value = gammma * value
+            value = PARAM.gamma * value
             i -= 1
     def reset(self):
         self.history = []
 class NetworkBrain:
-    def __init__(self, temperature, evaluate_count, self_predict, enemy_predict):
+    def __init__(self, temperature: float, evaluate_count : int, self_predict:Callable[[Model, GameBoard], Tuple[np.ndarray, float]], enemy_predict:Callable[[Model, GameBoard], Tuple[np.ndarray, float]]):
         self.temperature = temperature
         self.evaluate_count = evaluate_count
         self.self_predict = self_predict
@@ -77,7 +80,7 @@ class NetworkBrain:
     def get_name(self):
         return "NetworkBrain"
     
-    def select_action(self, board):
+    def select_action(self, board)->int:
         scores = pv_mcts_scores(board, self.temperature, self.evaluate_count, self.self_predict, self.enemy_predict)
         self.last_policies = scores
         action = np.random.choice(board.get_legal_actions(), p=scores)
@@ -90,7 +93,7 @@ def load_data(history_folder):
     with history_path.open(mode='rb') as f:
         return pickle.load(f)
     
-def self_play(model_file, history_folder, board, temperature, repeat_count, gamma = 0.99):
+def self_play(model_file, history_folder, board, temperature, repeat_count):
 
     model = load_model(model_file)
 
@@ -102,14 +105,14 @@ def self_play(model_file, history_folder, board, temperature, repeat_count, gamm
         pass
     def update_history(_1, board, result):
         value = get_first_player_value(result)
-        first_agent.brain.update_history(value, gamma)
-        second_agent.brain.update_history(-value, gamma)
+        first_agent.brain.update_history(value)
+        second_agent.brain.update_history(-value)
         history.extend(first_agent.brain.history)
         history.extend(second_agent.brain.history)
         #history.append([board.get_model_state(), [0] * board.get_output_size(), value])
 
-    first_agent = Agent(SelfplayNetworkBrain(temperature, 10, lambda x: predict(model, x), lambda x: predict(model, x)))
-    second_agent = Agent(SelfplayNetworkBrain(temperature, 10, lambda x: predict(model, x), lambda x: predict(model, x)))
+    first_agent = Agent(SelfplayNetworkBrain(temperature, PARAM.evaluate_count, lambda x: predict(model, x), lambda x: predict(model, x)))
+    second_agent = Agent(SelfplayNetworkBrain(temperature, PARAM.evaluate_count, lambda x: predict(model, x), lambda x: predict(model, x)))
 
     env = GameEnv(board, first_agent, second_agent, do_empty1, do_empty2, update_history)
     for i in range(repeat_count):
@@ -123,8 +126,41 @@ def self_play(model_file, history_folder, board, temperature, repeat_count, gamm
     print('\rcomplete. self play')
     return history
 
+def self_play2(first_model_file : str, second_model_file: str, history_first_folder : str, history_second_folder : str, board : GameBoard, temperature, repeat_count):
+    first_model = load_model(first_model_file)
+    second_model = load_model(second_model_file)
+    history_first=[]
+    history_second=[]
+    def do_empty1(current_board):
+        pass
+    def do_empty2(board, action):
+        pass
+    def update_history(_1, board, result):
+        value = get_first_player_value(result)
+        first_agent.brain.update_history(value)
+        second_agent.brain.update_history(-value)
+        history_first.extend(first_agent.brain.history)
+        history_second.extend(second_agent.brain.history)
+        #history.append([board.get_model_state(), [0] * board.get_output_size(), value])
+
+    first_agent = Agent(SelfplayNetworkBrain(temperature, PARAM.evaluate_count, lambda x: predict(first_model, x), lambda x: predict(second_model, x)))
+    second_agent = Agent(SelfplayNetworkBrain(temperature, PARAM.evaluate_count, lambda x: predict(first_model, x), lambda x: predict(second_model, x)))
+
+    env = GameEnv(board, first_agent, second_agent, do_empty1, do_empty2, update_history)
+    for i in range(repeat_count):
+        result = env.play()
+        first_agent.brain.reset()
+        second_agent.brain.reset()
+        print('\rSelf play {}/{}'.format(i + 1, repeat_count), end='')
+    write_data(history_first_folder, history_first)
+    write_data(history_second_folder, history_second)
+    K.clear_session()
+    del first_model
+    del second_model
+    print('\rcomplete. self play')
+    return history_first,history_second
     
-def train_network(load_model_path, save_model_path, history_folder, game_board : GameBoard, epoch_count : int):
+def train_network(load_model_path, history_folder, game_board : GameBoard, epoch_count : int):
 
     model = load_model(load_model_path)
     model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
@@ -146,23 +182,22 @@ def train_network(load_model_path, save_model_path, history_folder, game_board :
 
     print('\rcomplete. train')
     now = datetime.now()
-    save_file_name = path = save_model_path + '/{:04}{:02}{:02}{:02}{:02}{:02}.keras'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
+    save_file_name = os.path.dirname(load_model_path) + '/{:04}{:02}{:02}{:02}{:02}{:02}.keras'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
     model.save(save_file_name)
 
     K.clear_session()
     del model
     return save_file_name
 
-def evalute_best_model(best_model_file, latest_model_file, board, play_count):
-    best_model = load_model(best_model_file)
-    latest_model = load_model(latest_model_file)
-    champion_agent = Agent(NetworkBrain(1.0, 50, lambda x: predict(best_model, x), lambda x: predict(latest_model, x)))
-    challenger_agent = Agent(NetworkBrain(1.0, 50, lambda x: predict(latest_model, x), lambda x: predict(best_model, x)))
+def evalute_model(first_model : Model, second_model: Model, board : GameBoard, temperature: float, play_count: int)->Tuple[int,int,int]:
 
-    env = GameEnv(board, challenger_agent, champion_agent, episode_callback=lambda i, _1, _2: print('\rEvaluate {}/{}'.format(i + 1, play_count), end=''))
-    latest_win_first, latest_lose_first, latest_draw_first = env.play_n(play_count)
-    latest_first_point = latest_win_first * 2 + latest_draw_first
+    first_agent = Agent(NetworkBrain(temperature, PARAM.evaluate_count, lambda x: predict(first_model, x), lambda x: predict(second_model, x)))
+    second_agent = Agent(NetworkBrain(temperature, PARAM.evaluate_count, lambda x: predict(second_model, x), lambda x: predict(first_model, x)))
 
+    env = GameEnv(board, first_agent, second_agent, episode_callback=lambda i, _1, _2: print('\rEvaluate {}/{}'.format(i + 1, play_count), end=''))
+    return env.play_n(play_count)
+
+'''
     env = GameEnv(board, champion_agent, challenger_agent, episode_callback=lambda i, _1, _2: print('\rEvaluate {}/{}'.format(i + 1, play_count), end=''))
     latest_lose_second, latest_win_second, latest_draw_second = env.play_n(play_count)
     latest_second_point = latest_win_second * 2 + latest_draw_second
@@ -181,14 +216,60 @@ def evalute_best_model(best_model_file, latest_model_file, board, play_count):
         return True
     print('\rcomplete. evaluate best model')
     return False
+'''
 
 
-def train_cycle(best_model_file, save_model_path, history_folder, convert, self_play_repeat, epoch_count, cycle_count):
+
+def train_cycle(best_model_file : str, history_folder : str
+                ,game_board : GameBoard
+                ,self_play_repeat : int = 500
+                ,epoch_count : int = 200
+                ,cycle_count : int = 10
+                ,eval_temperature:float = 1.0
+                ,eval_count: int = 20):
     for i in range(cycle_count):
         print('cycle {}/{}'.format(i + 1, cycle_count))
-        self_play(best_model_file, history_folder, TicTacToeBoard(), 1.0, self_play_repeat)
-        latest_file_name = train_network(best_model_file, save_model_path, history_folder, convert, epoch_count)
-        evalute_best_model(best_model_file, latest_file_name, TicTacToeBoard(), 50)
+        self_play(best_model_file, history_folder, game_board, eval_temperature, self_play_repeat)
+        latest_file_name = train_network(best_model_file, history_folder, game_board, epoch_count)
+        best_model = load_model(best_model_file)
+        latest_model = load_model(latest_file_name)
+        first_points = evalute_model(latest_model, best_model, game_board, eval_temperature, eval_count)
+        second_points = evalute_model(best_model, latest_model, game_board, eval_temperature, eval_count)
+        if True:
+            os.remove(best_model_file)
+            shutil.copy(latest_file_name, best_model_file)
+            print("first model replace best model")
+def train_2_cycle(first_best_model_file : str, second_best_model_file : str, history_first_folder : str, history_second_folder : str, game_board : GameBoard, self_play_repeat : int = 500, epoch_count : int = 200, cycle_count : int = 10, eval_temperature:float = 1.0, eval_count: int = 20):
+    for i in range(cycle_count):
+        print('cycle {}/{}'.format(i + 1, cycle_count))
+        self_play2(first_best_model_file, second_best_model_file, history_first_folder, history_second_folder, game_board, 1.0, self_play_repeat)
+        
+        latest_file_name_first = train_network(first_best_model_file, history_first_folder, game_board, epoch_count)
+        latest_file_name_second = train_network(second_best_model_file, history_second_folder, game_board, epoch_count)
+        latest_first_model = load_model(latest_file_name_first)
+        latest_second_model = load_model(latest_file_name_second)
+        best_first_model = load_model(first_best_model_file)    
+        best_second_model = load_model(second_best_model_file)
+
+        first_point = evalute_model(latest_first_model, best_second_model, game_board, eval_temperature, eval_count)
+        prev_first_point = evalute_model(best_first_model, best_second_model, game_board, eval_temperature, eval_count)
+        if first_point > prev_first_point:
+            os.remove(first_best_model_file)
+            shutil.copy(latest_file_name_first, first_best_model_file)
+            print("first model replace best model")
+        second_point = evalute_model(best_first_model, latest_second_model, game_board, eval_temperature, eval_count)
+        prev_second_point = evalute_model(best_first_model, best_second_model, game_board, eval_temperature, eval_count)
+        if second_point > prev_second_point:
+            os.remove(second_best_model_file)
+            shutil.copy(latest_file_name_second, second_best_model_file)
+            print("second model replace best model") 
+        K.clear_session()
+        del latest_first_model
+        del latest_second_model
+        del best_second_model
+        del best_first_model
+        #evalute_best_model(best_model_file, latest_file_name, TicTacToeBoard(), 50)
+
 
 if __name__ == '__main__':
     pass
