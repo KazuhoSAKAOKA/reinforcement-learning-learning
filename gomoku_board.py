@@ -1,3 +1,4 @@
+from typing import Tuple
 import numpy as np
 from game_board import GameBoard, GameRelativeResult, GameResult
 
@@ -94,7 +95,7 @@ class GomokuBoard(GameBoard):
         series = self.counting_connected(judge_cells, other_cells, x - dx, y - dy, -dx, -dy, False, series)
         return series
     
-    def judge_last_action(self)->(bool, GameRelativeResult):
+    def judge_last_action(self)->Tuple[bool, GameRelativeResult]:
         '''
         最後に打った手による勝敗を判定する
 
@@ -132,7 +133,7 @@ class GomokuBoard(GameBoard):
         return False, None
 
 
-    def get_legal_actions(self):
+    def get_legal_actions(self)->np.ndarray:
         actions = np.array([], dtype=np.int8)
 
         # 初手の場合、盤面の中央に打つ
@@ -145,7 +146,7 @@ class GomokuBoard(GameBoard):
                 if self.self_cells[i][j] == 0 and self.enemy_cells[i][j] == 0:
                     actions = np.append(actions, i * self.board_size + j)
         return actions
-    def get_legal_actions_ratio(self):
+    def get_legal_actions_ratio(self)->np.ndarray:
         '''
         行動可能なアクションを1.0,不可能なアクションを0.0とした配列を返す
         '''

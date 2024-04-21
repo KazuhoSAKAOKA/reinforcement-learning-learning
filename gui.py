@@ -7,6 +7,7 @@ from network_common import NetworkBrain, predict, load_model
 from tictactoe_board import TicTacToeBoard
 from tictactoe_network import MODEL_FILE_BEST, MODEL_FILE_BEST_FIRST, MODEL_FILE_BEST_SECOND
 from gomoku_board import GomokuBoard
+from parameter import PARAM
 
 import threading
 import numpy as np
@@ -113,15 +114,21 @@ class Application(tk.Frame):
         self.try_network_action()
 
 def test_tictactoe():
+    PARAM.alpha = 0.0
     root = tk.Tk()
     board = TicTacToeBoard()
-    model = load_model('./model/tictactoe/_________best.keras')
-    #model = load_model(MODEL_FILE_BEST)
-    #first_model = load_model(MODEL_FILE_BEST_FIRST)
-    #second_model = load_model(MODEL_FILE_BEST_SECOND)
-    network_agent = Agent(NetworkBrain(0.1, 10, lambda x: predict(model, x), lambda x: predict(model, x)))
+    model = load_model(MODEL_FILE_BEST)
+    model = load_model('./model/tictactoe/20240413091938.keras')
+    network_agent = Agent(NetworkBrain(0, 200, lambda x: predict(model, x), lambda x: predict(model, x)))
+    
+    #first_model = load_model('./model/tictactoe/first/20240412054736.keras')
+    #second_model = load_model('./model/tictactoe/second/20240412114427.keras')
+    #network_agent = Agent(NetworkBrain(0, 20, lambda x: predict(second_model, x), lambda x: predict(first_model, x)))
+    #network_agent = Agent(NetworkBrain(0, 200, lambda x: predict(first_model, x), lambda x: predict(second_model, x)))
+    
     human_agent = Agent(HumanGuiBrain())
-    app = Application(board, network_agent,human_agent, master=root)
+    app = Application(board, human_agent, network_agent, master=root)
+    #app = Application(board, network_agent, human_agent, master=root)
     app.mainloop()    
 
 def test_gomoku():

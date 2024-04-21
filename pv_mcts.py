@@ -3,11 +3,13 @@
 # ====================
 
 # パッケージのインポート
+from typing import Callable, Tuple
 from game_board import GameBoard, GameRelativeResult
 from math import sqrt
 import numpy as np
 from parameter import PARAM
 
+DEBUG_OUTPUT = False
 
 
 # ボルツマン分布
@@ -23,7 +25,7 @@ def nodes_to_scores(nodes):
     return scores
 
 # モンテカルロ木探索のスコアの取得
-def pv_mcts_scores(board : GameBoard, temperature : float, evaluate_count : int, predict_alpha, predict_beta):
+def pv_mcts_scores(board : GameBoard, temperature : float, evaluate_count : int, predict_alpha :Callable[[GameBoard], Tuple[np.ndarray, float]], predict_beta:Callable[[GameBoard], Tuple[np.ndarray, float]]):
     # モンテカルロ木探索のノードの定義
     class Node:
         # ノードの初期化
@@ -51,6 +53,15 @@ def pv_mcts_scores(board : GameBoard, temperature : float, evaluate_count : int,
                 # 累計価値と試行回数の更新
                 self.w += value
                 self.n += 1
+
+
+                if DEBUG_OUTPUT:
+                    print("=== MCTS ===")
+                    print(self.board)
+                    print("policy:{0}, v={1}".format(0, value))
+                    print("============")
+                    print()
+                
                 return value
 
             # 子ノードが存在しない時
@@ -58,6 +69,13 @@ def pv_mcts_scores(board : GameBoard, temperature : float, evaluate_count : int,
                 # ニューラルネットワークの推論で方策と価値を取得
                 policies, value = predict_alpha(self.board)
 
+                if DEBUG_OUTPUT:
+                    print("=== MCTS ===")
+                    print(self.board)
+                    print("policy:{0}, v={1}".format(policies, value))
+                    print("============")
+                    print()
+                
                 # 累計価値と試行回数の更新
                 self.w += value
                 self.n += 1

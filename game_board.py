@@ -1,3 +1,4 @@
+from typing import Tuple
 import numpy as np
 from enum import Enum
 
@@ -50,7 +51,7 @@ class GameBoard:
         x = x.reshape(1, self.board_size, self.board_size, 2)
         return x
     
-    def convert_history_to_model_input(self, history)->(np.ndarray, np.ndarray, np.ndarray):
+    def convert_history_to_model_input(self, history) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         xs, y_policies, y_values = zip(*history)
         xs = np.array(xs)
         a,b,c = (self.board_size, self.board_size, 2)
@@ -59,7 +60,7 @@ class GameBoard:
         y_values = np.array(y_values)
         return xs, y_policies, y_values
 
-    def transit_next(self, action)->(bool, 'GameBoard'):
+    def transit_next(self, action)-> Tuple[bool, 'GameBoard']:
         '''
         次の状態を返す
         '''
@@ -145,8 +146,9 @@ class GameBoard:
                     actions[i * self.board_size + j] = 1.0
         return actions
 
-    def judge_last_action(self)->(bool, GameRelativeResult):
+    def judge_last_action(self)-> Tuple[bool, GameRelativeResult]:
         Exception("Not implemented")
     def is_done(self)->bool:
         done, _ = self.judge_last_action()
         return done
+    

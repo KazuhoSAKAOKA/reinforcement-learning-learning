@@ -19,6 +19,14 @@ def episode_progress(i: int, board : GameBoard, result : GameResult):
     print("{0} Game result: {1}".format(i + 1, result))
     print(board)
 
+
+class GameStats:
+    def __init__(self, first_player_win: int, second_player_win: int, draw: int):
+        self.first_player_win = first_player_win
+        self.second_player_win = second_player_win
+        self.draw = draw
+    def __repr__(self) -> str:
+        return "First player win: {0}, Second player win: {1}, Draw: {2}".format(self.first_player_win, self.second_player_win, self.draw)
 class GameEnv:
     def __init__(self, board : GameBoard, first_agent : Agent, second_agent : Agent , prev_action_callback :Callable[[GameBoard], None] = do_empty1, selected_action_callback : Callable[[GameBoard, int],None]= do_empty2, episode_callback : Callable[[int, GameBoard, GameResult], None] = do_empty3):
         self.board = board
@@ -58,7 +66,7 @@ class GameEnv:
         self.episode_callback(self.index, current, absolute_result)
         return absolute_result
     
-    def play_n(self, n: int) -> Tuple[int, int, int]:
+    def play_n(self, n: int) -> GameStats:
         self.index = 0
         first_player_win = 0
         second_player_win = 0
@@ -73,7 +81,7 @@ class GameEnv:
                 draw += 1
             self.index += 1
         print("First player {0} win: {1}, Second player {2} win: {3}, Draw: {4}".format(self.first_agent.get_brain_name(), first_player_win, self.second_agent.get_brain_name(), second_player_win, draw))
-        return first_player_win, second_player_win, draw
+        return GameStats(first_player_win, second_player_win, draw)
 
 
 

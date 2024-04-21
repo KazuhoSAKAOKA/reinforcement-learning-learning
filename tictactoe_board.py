@@ -1,3 +1,4 @@
+from typing import Tuple
 import numpy as np
 from game_board import GameBoard, GameRelativeResult, GameResult
 
@@ -35,7 +36,7 @@ class TicTacToeBoard(GameBoard):
             + self.counting_connected(judge_cells, other_cells, x + dx, y + dy, dx, dy) \
             + self.counting_connected(judge_cells, other_cells, x - dx, y - dy, -dx, -dy)
 
-    def judge_last_action(self)->(bool, GameRelativeResult):
+    def judge_last_action(self)->Tuple[bool, GameRelativeResult]:
         '''
         最後に打った手による勝敗を判定する
         '''
