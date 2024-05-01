@@ -3,11 +3,7 @@ from game_board import GameBoard
 from game import GameEnv
 from agent import Agent
 from mini_max import AlphaBetaBrain
-from network_common import NetworkBrain, predict, load_model
-from tictactoe_board import TicTacToeBoard
-from tictactoe_network import MODEL_FILE_BEST, MODEL_FILE_BEST_FIRST, MODEL_FILE_BEST_SECOND
-from gomoku_board import GomokuBoard
-from parameter import PARAM
+from network_common import NetworkBrain
 
 import threading
 import numpy as np
@@ -69,18 +65,21 @@ class Application(tk.Frame):
 
     def try_network_action(self):
         if self.game_board.is_first_player_turn():
-            if type(self.first_agent.brain) is NetworkBrain:
+            if type(self.first_agent.brain) is not HumanGuiBrain:
                 self.act_network(self.first_agent)
         else:
-            if type(self.second_agent.brain) is NetworkBrain:
+            if type(self.second_agent.brain) is not HumanGuiBrain:
                 self.act_network(self.second_agent)
 
     def act_network(self, agent : Agent):
-        
-        selected = agent.brain.select_action(self.game_board)
-        policies = agent.brain.get_last_policies()
-        print("policiy:{}".format(policies))
-        succeed, next_board = self.game_board.transit_next(selected)
+        print("begin select action")
+        selected = agent.select_action(self.game_board)
+        if type(agent.brain) is NetworkBrain:
+            policies = agent.brain.get_last_policies()
+            print("selected:{} ,policiy:{}".format(selected, policies))
+        else:
+            print("selected:{}".format(selected))
+        next_board,succeed = self.game_board.transit_next(selected)
         if not succeed:
             return
         self.game_board = next_board
@@ -113,35 +112,9 @@ class Application(tk.Frame):
 
         self.try_network_action()
 
-def test_tictactoe():
-    PARAM.alpha = 0.0
+
+def run_gui(board : GameBoard, first_agent : Agent, second_agent : Agent):
     root = tk.Tk()
-    board = TicTacToeBoard()
-    model = load_model(MODEL_FILE_BEST)
-    model = load_model('./model/tictactoe/20240413091938.keras')
-    network_agent = Agent(NetworkBrain(0, 200, lambda x: predict(model, x), lambda x: predict(model, x)))
-    
-    #first_model = load_model('./model/tictactoe/first/20240412054736.keras')
-    #second_model = load_model('./model/tictactoe/second/20240412114427.keras')
-    #network_agent = Agent(NetworkBrain(0, 20, lambda x: predict(second_model, x), lambda x: predict(first_model, x)))
-    #network_agent = Agent(NetworkBrain(0, 200, lambda x: predict(first_model, x), lambda x: predict(second_model, x)))
-    
-    human_agent = Agent(HumanGuiBrain())
-    app = Application(board, human_agent, network_agent, master=root)
-    #app = Application(board, network_agent, human_agent, master=root)
-    app.mainloop()    
+    app = Application(board, first_agent, second_agent, root)
+    app.mainloop()
 
-def test_gomoku():
-    root = tk.Tk()
-    board = GomokuBoard(11)
-
-    model = load_model(MODEL_FILE_BEST)
-    #first_model = load_model(MODEL_FILE_BEST_FIRST)
-    #second_model = load_model(MODEL_FILE_BEST_SECOND)
-    network_agent = Agent(NetworkBrain(0.1, 10, lambda x: predict(model, x), lambda x: predict(model, x)))
-    human_agent = Agent(HumanGuiBrain())
-    app = Application(board, human_agent, network_agent, master=root)
-    app.mainloop()    
-
-if __name__ == "__main__":
-    test_tictactoe()

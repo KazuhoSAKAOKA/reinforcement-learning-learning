@@ -56,7 +56,7 @@ class GameEnv:
                 action = self.first_agent.select_action(current)
             else:
                 action = self.second_agent.select_action(current)
-            succeed, next_board = current.transit_next(action)
+            next_board, succeed = current.transit_next(action)
             if not succeed:
                 raise Exception("Invalid action")
 

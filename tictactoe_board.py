@@ -73,7 +73,7 @@ def test_board():
             if action in actions:
                 break
             print("Invalid action")
-        _, board = board.transit_next(action)
+        board, _ = board.transit_next(action)
         done, result = board.judge_last_action()
         if done:
             print(result)

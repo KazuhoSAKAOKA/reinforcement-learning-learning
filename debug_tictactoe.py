@@ -25,19 +25,19 @@ def degut_predict_only(model):
     board = TicTacToeBoard()
     output_step(board, model)
 
-    _, board = board.transit_next(4)
+    board, _ = board.transit_next(4)
     output_step(board, model)
 
-    _, board = board.transit_next(1)
+    board, _ = board.transit_next(1)
     output_step(board, model)
 
-    _, board = board.transit_next(2)
+    board, _ = board.transit_next(2)
     output_step(board, model)
 
-    _, board = board.transit_next(6)
+    board, _ = board.transit_next(6)
     output_step(board, model)
 
-    _, board = board.transit_next(5)
+    board, _ = board.transit_next(5)
     output_step(board, model)
 
 
@@ -53,7 +53,7 @@ def debug_predict(_1, board : TicTacToeBoard):
     return np.full(shape=(len(legal_actions),), fill_value=p), 0.0
 def step(board :TicTacToeBoard, steps : list) -> TicTacToeBoard:
     for action in steps:
-        _, board = board.transit_next(action)
+        board, _ = board.transit_next(action)
     return board
 
 def debug_mcts(model):
@@ -65,17 +65,6 @@ def debug_mcts(model):
     p = predict(model, board)
     print(p)
     output_mcts_step(board, brain)
-
-#    _, board = board.transit_next(4)
-#    output_mcts_step(board, brain)
-#    _, board = board.transit_next(1)
-#    output_mcts_step(board, brain)
-#    _, board = board.transit_next(2)
-#    output_mcts_step(board, brain)
-#    _, board = board.transit_next(6)
-#    output_mcts_step(board, brain)
-#    _, board = board.transit_next(5)
-#    output_mcts_step(board, brain)
 
 def debug_play(model):
     board = TicTacToeBoard()
@@ -104,7 +93,7 @@ def train_handdata():
     model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
 
     empty_board = TicTacToeBoard()
-    _,one_board = empty_board.transit_next(4)
+    one_board,_ = empty_board.transit_next(4)
     p, v = predict(model, empty_board)
     print(p)
     print(v)
@@ -174,11 +163,11 @@ def test1():
     second_model = load_model('./model/tictactoe/second/20240410073806.keras')
     network_agent = Agent(NetworkBrain(0, 50, lambda x: predict(second_model, x), lambda x: predict(first_model, x)))
 
-    _, board = board.transit_next(4)
+    board, _ = board.transit_next(4)
     print(board)
-    _, board = board.transit_next(0)
+    board, _ = board.transit_next(0)
     print(board)
-    _, board = board.transit_next(1)
+    board, _ = board.transit_next(1)
     print(board)
     #selected = network_agent.brain.select_action(board)
     #print(selected)
@@ -218,9 +207,9 @@ def train_hand_data():
         return np.append()
 
     board = TicTacToeBoard()
-    _, board = board.transit_next(4)
-    _, board = board.transit_next(0)
-    _, board = board.transit_next(1)
+    board, _ = board.transit_next(4)
+    board, _ = board.transit_next(0)
+    board, _ = board.transit_next(1)
 
 
 
@@ -242,4 +231,4 @@ def train_hand_data():
 
 #train_hand_data()
 #train_cycle_tictactoe(5, 20, 5, 5, 0.1)
-train2_cycle_tictactoe(5, 20, 5, 5, 0.1)
+train2_cycle_tictactoe(500, 200, 5, 5, 0.1)

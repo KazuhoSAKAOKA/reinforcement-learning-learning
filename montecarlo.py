@@ -14,7 +14,7 @@ def playout(board):
         else:
             return 1
     actions = board.get_legal_actions()
-    _, next_state = board.transit_next(np.random.choice(actions))
+    next_state, _ = board.transit_next(np.random.choice(actions))
     return -playout(next_state)
 
 class PrimeMonteCarloBrain:
@@ -28,7 +28,7 @@ class PrimeMonteCarloBrain:
         values = np.zeros(shape=(actions.shape[0],), dtype=np.int16)
         for i, action in enumerate(actions):
             for _ in range(self.count):
-                _, next_state = board.transit_next(action)
+                next_state, _ = board.transit_next(action)
                 values[i] += -playout(next_state)
         selected = actions[np.argmax(values)]
         #s = ''
@@ -87,7 +87,7 @@ def monte_carlo_action(board, count = 100):
             actions = self.board.get_legal_actions()
             self.child_nodes = []
             for action in actions:
-                succeed, next_board = self.board.transit_next(action)
+                next_board, succeed = self.board.transit_next(action)
                 if succeed:
                     self.child_nodes.append(Node(next_board, 0, 0, self.expand_limit))
         def next_child_node(self):

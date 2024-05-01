@@ -50,6 +50,10 @@ class GameBoard:
         x = x.transpose(1, 2, 0)
         x = x.reshape(1, self.board_size, self.board_size, 2)
         return x
+    def index_to_xy(self, index:int)->Tuple[int,int]:
+        return index % self.board_size, index // self.board_size
+    def xy_to_index(self, x:int, y:int)->int:
+        return y * self.board_size + x
     
     def convert_history_to_model_input(self, history) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         xs, y_policies, y_values = zip(*history)
@@ -60,14 +64,14 @@ class GameBoard:
         y_values = np.array(y_values)
         return xs, y_policies, y_values
 
-    def transit_next(self, action)-> Tuple[bool, 'GameBoard']:
+    def transit_next(self, action)-> Tuple['GameBoard', bool]:
         '''
         次の状態を返す
         '''
         x = action % self.board_size
         y = action // self.board_size
         if self.self_cells[y][x] != 0 or self.enemy_cells[y][x] != 0:
-            return False, self
+            return self, False
         next = self.__class__()
         next.self_cells = self.enemy_cells.copy()
         next.enemy_cells = self.self_cells.copy()
@@ -75,7 +79,7 @@ class GameBoard:
         next.board_size = self.board_size
         next.turn = self.turn + 1
         next.last_action = action
-        return True, next
+        return next, True
 
     def is_first_player_turn(self)->bool:
         return self.turn % 2 == 0
