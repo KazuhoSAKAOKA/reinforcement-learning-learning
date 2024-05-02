@@ -83,7 +83,7 @@ def pv_mcts_scores(board : GameBoard, temperature : float, evaluate_count : int,
                 # 子ノードの展開
                 self.child_nodes = []
                 for action, policy in zip(self.board.get_legal_actions(), policies):
-                    succeed, next = self.board.transit_next(action)
+                    next, succeed = self.board.transit_next(action)
                     if not succeed:
                         Exception("Invalid action")
                     self.child_nodes.append(Node(next, policy, predict_beta, predict_alpha))
