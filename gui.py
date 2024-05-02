@@ -100,7 +100,7 @@ class Application(tk.Frame):
         if action not in actives:
             return
         print("user select action:{}".format(action))
-        succeed, next_board = self.game_board.transit_next(action)
+        next_board, succeed = self.game_board.transit_next(action)
         if not succeed:
             return
         self.game_board = next_board
