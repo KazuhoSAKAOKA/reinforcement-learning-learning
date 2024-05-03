@@ -125,6 +125,7 @@ def train_cycle(best_model_file : str, history_folder : str
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
     for i in range(cycle_count):
         print('cycle {}/{}'.format(i + 1, cycle_count))
+        
         model = load_model(best_model_file)
         brain = SelfplayNetworkBrain(selfplay_temperature, PARAM.evaluate_count, model)
         self_play(brain, brain, game_board, selfplay_repeat, history_folder)

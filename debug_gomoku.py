@@ -2,7 +2,7 @@ from game import GameBoard
 from gomoku_board import GomokuBoard
 from agent import Agent
 from network_common import NetworkBrain,DualModelNetworkBrain, load_model
-from gomoku_network import get_model_file_best, get_model_file_best_first, get_model_file_best_second
+from gomoku_network import get_model_file_best, get_model_file_best_first, get_model_file_best_second, train_cycle_gomoku
 from gui import HumanGuiBrain, run_gui
 from tensorflow.keras import backend as K
 
@@ -23,5 +23,6 @@ def debug_gui(board_size : int=15):
     del second_model
     
     
-debug_gui(9)
+#debug_gui(9)
 
+train_cycle_gomoku(15, 10, 5, 5, 0, 0)

@@ -42,10 +42,13 @@ def get_model_file_best_first(board_size : int = 15)->str:
 def get_model_file_best_second(board_size : int = 15)->str:
     return './model/gomoku_{0}/second/best.keras'.format(board_size)
 
-#MODEL_FILE_BEST_FIRST = './model/gomoku/first/best.keras'
-#MODEL_FILE_BEST_SECOND = './model/gomoku/second/best.keras'
-#HISTORY_FOLDER_FIRST = './data/gomoku/first'
-#HISTORY_FOLDER_SECOND = './data/gomoku/second'
+google_drive_path = '/content/drive/MyDrive/'
+
+def get_model_file_best_gcolab(board_size: int=15)->str:
+  return google_drive_path + 'model/gomoku_{0}/best.keras'.format(board_size)
+def get_history_folder_gcolab(board_size: int=15)->str:
+  return google_drive_path + 'history/gomoku_{0}'.format(board_size)
+
 def conv(filters):
     return Conv2D(filters, 5, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))
 
@@ -92,7 +95,7 @@ def dual_network(file_best :str, board_size :int):
 
     model = Model(inputs=input, outputs=[p,v])
     model.summary()
-
+    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
     model.save(file_best)
 
     K.clear_session()
@@ -143,6 +146,27 @@ def train2_cycle_gomoku(board_size : int = 15
         eval_temperature=eval_temperature,
         eval_judge=eval_judge)
 
+
+def train_cycle_gomoku_gcolab(board_size : int = 15
+                ,selfplay_repeat : int = 20
+                ,epoch_count : int = 100
+                ,cycle_count : int = 10
+                ,eval_count: int = 0
+                ,eval_temperature:float = 1.0
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
+    dual_network(get_model_file_best_gcolab(board_size),board_size)
+    train_cycle(
+        best_model_file=get_model_file_best_gcolab(board_size),
+        history_folder=get_history_folder_gcolab(board_size),
+        game_board= GomokuBoard(),
+        selfplay_repeat= selfplay_repeat,
+        epoch_count= epoch_count ,
+        cycle_count=cycle_count,
+        eval_count=eval_count ,
+        eval_temperature=eval_temperature,
+        eval_judge=eval_judge)
+
+
 if __name__ == '__main__':
-    train2_cycle_gomoku(9)
+    train_cycle_gomoku(15, 1, 1, 2, 0)
 

@@ -109,6 +109,7 @@ def dual_network(file_best=MODEL_FILE_BEST):
 
     model = Model(inputs=input, outputs=[p,v])
     model.summary()
+    model.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
 
     model.save(file_best)
 
