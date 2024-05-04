@@ -15,12 +15,12 @@ def history_view(history_file: str):
         board.enemy_cells = np.array(x[1]).reshape(3, 3)
         board.turn = sum(x[0]) + sum(x[1])
         print(board)
-        print(y_policy)
-        print(y_value)
+        print('policy={}'.format(y_policy))
+        print('value={}'.format(y_value))
         print("~~~~~~~~~~~~~~~~~~~~~")
 
 
 
 
 if __name__ == '__main__':
-    history_view('./data/tictactoe/second/random.history')
+    history_view('./data/tictactoe/20240504195757.history')

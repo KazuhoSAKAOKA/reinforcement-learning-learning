@@ -84,26 +84,7 @@ def evaluate_model(agent_target : Agent , agent_base: Agent, board : GameBoard, 
 
     return first, second
 
-'''
-    env = GameEnv(board, champion_agent, challenger_agent, episode_callback=lambda i, _1, _2: print('\rEvaluate {}/{}'.format(i + 1, play_count), end=''))
-    latest_lose_second, latest_win_second, latest_draw_second = env.play_n(play_count)
-    latest_second_point = latest_win_second * 2 + latest_draw_second
 
-    best_first_point = latest_lose_second * 2 + latest_draw_second
-    best_second_point = latest_lose_first * 2 + latest_draw_first
-
-    K.clear_session()
-    del best_model
-    del latest_model
-    print('point={0},{1},{2},{3}'.format(latest_first_point, best_first_point, latest_second_point, best_second_point))
-    if latest_first_point >= best_first_point and latest_second_point > best_second_point:
-        print("New champion")
-        os.remove(best_model_file)
-        os.rename(latest_model_file, best_model_file)
-        return True
-    print('\rcomplete. evaluate best model')
-    return False
-'''
 
 def judge_stats(stats: Tuple[GameStats, GameStats])->bool:
     current, best = stats
@@ -128,8 +109,9 @@ def train_cycle(
         print('cycle {}/{}'.format(i + 1, cycle_count))
         
         model = load_model(best_model_file)
-        brain = SelfplayNetworkBrain(brain_evaluate_count, model)
-        self_play(brain, brain, game_board, selfplay_repeat, history_folder)
+        first_brain = SelfplayNetworkBrain(brain_evaluate_count, model)
+        second_brain = SelfplayNetworkBrain(brain_evaluate_count, model)
+        self_play(first_brain, second_brain, game_board, selfplay_repeat, history_folder)
         latest_file_name = train_network(best_model_file, history_folder, game_board, epoch_count)
         best_model = load_model(best_model_file)
         latest_model = load_model(latest_file_name)
@@ -194,5 +176,3 @@ def train_2_cycle(game_board : GameBoard
         del best_second_model
         del best_first_model
 
-if __name__ == '__main__':
-    pass

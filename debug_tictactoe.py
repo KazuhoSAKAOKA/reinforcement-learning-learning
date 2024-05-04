@@ -5,11 +5,12 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.callbacks import LearningRateScheduler, LambdaCallback
 from network_common import load_model,NetworkBrain, load_data
 from tictactoe_network import MODEL_FILE_BEST, dual_network, DN_FILTERS,DN_INPUT_SHAPE, DN_OUTPUT_SIZE,residual_block,conv,DN_RESIDUAL_NUM, train_cycle_tictactoe, train2_cycle_tictactoe
-from network_brain import predict
+from network_brain import predict, SelfplayNetworkBrain
 from tictactoe_board import TicTacToeBoard
 from mini_max import AlphaBetaBrain
 from agent import Agent
 from game import GameEnv
+from self_play import self_play, SelfplayBrain
 import numpy as np
 import pv_mcts
 import pickle
@@ -230,5 +231,14 @@ def train_hand_data():
     print(pv)
 
 #train_hand_data()
-train_cycle_tictactoe(brain_evaluate_count=10, selfplay_repeat=10, epoch_count=10, cycle_count=10, eval_count=10)
+#train_cycle_tictactoe(brain_evaluate_count=10, selfplay_repeat=10, epoch_count=10, cycle_count=10, eval_count=10)
 #train2_cycle_tictactoe(500, 200, 5, 5, 0.1)
+train_cycle_tictactoe(5, 2, 2, 1, 0)
+
+#dual_network(MODEL_FILE_BEST)
+#model = load_model(MODEL_FILE_BEST)
+
+#first = SelfplayNetworkBrain(10, model)
+#second = SelfplayNetworkBrain(10, model)
+#self_play(first, second, TicTacToeBoard(), 1, './data/tictactoe')
+

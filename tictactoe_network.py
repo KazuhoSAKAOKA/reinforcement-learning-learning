@@ -302,13 +302,14 @@ def train_cycle_tictactoe_gcolab(
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):             
-    dual_network(MODEL_FILE_BEST)
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
+    best_file = get_model_file_best_gcolab()         
+    dual_network(best_file)
     train_cycle(
         game_board= TicTacToeBoard(),
         brain_evaluate_count= brain_evaluate_count,
-        best_model_file=MODEL_FILE_BEST, 
-        history_folder=HISTORY_FOLDER,
+        best_model_file=best_file, 
+        history_folder=get_history_folder_gcolab(),
         selfplay_repeat= selfplay_repeat,
         epoch_count= epoch_count ,
         cycle_count=cycle_count,

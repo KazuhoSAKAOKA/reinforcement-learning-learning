@@ -11,12 +11,10 @@ from pathlib import Path
 
 def write_data(folder:str, history)->str:
     now = datetime.now()
-    folder = '{0}/'.format(folder)
+    if(folder[-1] != '/'):
+        folder = '{0}/'.format(folder)
     os.makedirs(folder, exist_ok=True)
-    if folder[:-1] == '/':
-        path =  folder + '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
-    else:
-        path =  folder + '/{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second) 
+    path =  folder + '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
     with open(path, mode='wb') as f:
         pickle.dump(history, f)
     return path
@@ -88,14 +86,5 @@ def self_play2(first_brain: SelfplayBrain, second_brain : SelfplayBrain, board :
     print('history file:{}, {}'.format(filename_first, filename_second))
     return filename_first,filename_second
 
-'''
-def debug_tictactoe():
-    board = TicTacToeBoard()
-    first_brain = SelfplayRandomBrain()
-    second_brain = SelfplayRandomBrain()
-    count = 2000
-    self_play(first_brain, second_brain, board, count, './data/tictactoe')
-    self_play2(first_brain, second_brain, board, count, './data/tictactoe/first','./data/tictactoe/second')
-'''
 
 
