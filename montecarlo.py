@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from game_board import GameRelativeResult, GameResult
-
+from brains import Brain
 
 def playout(board):
     # 相手が行動した直後の状態を受け取る。相手が勝ってたら自分の負け。
@@ -133,8 +133,9 @@ def monte_carlo_action(board, count = 100):
     return selected
 
 
-class MonteCarloBrain:
+class MonteCarloBrain(Brain):
     def __init__(self, count = 10):
+        super().__init__()
         self.count = count
         self.name = "MonteCarloBrain"
     def get_name(self):

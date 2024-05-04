@@ -1,6 +1,7 @@
 from typing import Tuple
 import numpy as np
 from game_board import GameBoard, GameRelativeResult, GameResult
+from stone_game_board import StoneGameBoard
 
 class StoneSeries:
     def __init__(self, connected_count):
@@ -44,11 +45,11 @@ directions = [
     (0, 1),
 ]
 
-class GomokuBoard(GameBoard):
+class GomokuBoard(StoneGameBoard):
     def __init__(self, board_size = 15, turn = 0, last_action = None):
         super().__init__(board_size, turn, last_action)
 
-    def get_model_state(self):
+    def to_hisotry_record(self):
         return np.array([self.self_cells, self.enemy_cells])
 
     def counting_connected(self, judge_cells, other_cells, x, y, dx, dy, to_front, series)->StoneSeries:
@@ -111,7 +112,7 @@ class GomokuBoard(GameBoard):
                 return True, GameRelativeResult.win_last_play_player
             elif series.get_connected_without_skip() > 5:
                 # ６個以上並んでいる場合、先手なら負け、後手なら勝ち
-                if self.is_first_player_last_operated():
+                if self.is_second_player_turn():
                     return True, GameRelativeResult.lose_last_play_player
                 else:
                     return True, GameRelativeResult.win_last_play_player
@@ -123,7 +124,7 @@ class GomokuBoard(GameBoard):
                     active_fours += 1
         
         # 先手であった場合、三々、四々は禁じ手
-        if self.is_first_player_last_operated():
+        if self.is_second_player_turn():
             if active_threes >= 2 or active_fours >= 2:
                 return True, GameRelativeResult.lose_last_play_player
 

@@ -21,6 +21,8 @@ from network_common import judge_stats, train_network, self_play, train_cycle, t
 from network_brain import predict,DualModelNetworkBrain,NetworkBrain
 from parameter import PARAM
 from self_play import write_data, load_data, load_data_file, load_data_file_name
+from google_colab_helper import google_drive_path
+
 DN_FILTERS = 128
 DN_RESIDUAL_NUM = 16
 DN_INPUT_SHAPE = (3,3,2)
@@ -34,6 +36,13 @@ MODEL_FILE_BEST_FIRST = './model/tictactoe/first/best.keras'
 MODEL_FILE_BEST_SECOND = './model/tictactoe/second/best.keras'
 HISTORY_FOLDER_FIRST = './data/tictactoe/first'
 HISTORY_FOLDER_SECOND = './data/tictactoe/second'
+
+
+def get_model_file_best_gcolab()->str:
+  return google_drive_path + 'model/tictactoe/best.keras'
+def get_history_folder_gcolab()->str:
+  return google_drive_path + 'history/tictactoe'
+
 def conv(filters):
     return Conv2D(filters, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))
 
@@ -246,22 +255,23 @@ def evaluate2():
     del second_model
 
 
-def train_cycle_tictactoe(selfplay_repeat : int = 500
+def train_cycle_tictactoe(
+                brain_evaluate_count : int = 50
+                ,selfplay_repeat : int = 500
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_temperature:float = 1.0
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):        
     dual_network(MODEL_FILE_BEST)
     train_cycle(
+        game_board= TicTacToeBoard(),
+        brain_evaluate_count= brain_evaluate_count,
         best_model_file=MODEL_FILE_BEST, 
         history_folder=HISTORY_FOLDER,
-        game_board= TicTacToeBoard(),
         selfplay_repeat= selfplay_repeat,
         epoch_count= epoch_count ,
         cycle_count=cycle_count,
         eval_count=eval_count ,
-        eval_temperature=eval_temperature,
         eval_judge=eval_judge)
 
 
@@ -285,6 +295,26 @@ def train2_cycle_tictactoe(selfplay_repeat : int = 500
         eval_count=eval_count ,
         eval_temperature=eval_temperature,
         eval_judge=eval_judge)
+
+def train_cycle_tictactoe_gcolab(
+                brain_evaluate_count : int = 50
+                ,selfplay_repeat : int = 500
+                ,epoch_count : int = 200
+                ,cycle_count : int = 10
+                ,eval_count: int = 20
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):             
+    dual_network(MODEL_FILE_BEST)
+    train_cycle(
+        game_board= TicTacToeBoard(),
+        brain_evaluate_count= brain_evaluate_count,
+        best_model_file=MODEL_FILE_BEST, 
+        history_folder=HISTORY_FOLDER,
+        selfplay_repeat= selfplay_repeat,
+        epoch_count= epoch_count ,
+        cycle_count=cycle_count,
+        eval_count=eval_count ,
+        eval_judge=eval_judge)
+
 
 if __name__ == '__main__':
 

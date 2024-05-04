@@ -1,6 +1,7 @@
 from typing import Tuple
 import numpy as np
 from game_board import GameBoard, GameRelativeResult, GameResult
+from stone_game_board import StoneGameBoard
 
 directions = [
     (1, 0),
@@ -9,7 +10,7 @@ directions = [
     (0, 1),
 ]
 
-class TicTacToeBoard(GameBoard):
+class TicTacToeBoard(StoneGameBoard):
     def __init__(self,board_size=3, turn=0, last_action=None):
         super().__init__(board_size, turn, last_action)
 
@@ -51,13 +52,7 @@ class TicTacToeBoard(GameBoard):
         if self.turn == self.board_size * self.board_size:
             return True, GameRelativeResult.draw
         return False, None
-'''
-    def get_model_input_shape(self):
-        x = np.reshape([self.self_cells, self.enemy_cells], (2, 3, 3))
-        x = x.transpose(1, 2, 0)
-        x = x.reshape(1, self.board_size, self.board_size, 2)
-        return x
-'''    
+
 def test_board():
     board = TicTacToeBoard()
     while True:

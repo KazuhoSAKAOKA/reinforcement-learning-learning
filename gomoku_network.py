@@ -21,6 +21,8 @@ from network_common import judge_stats, train_network, self_play, train_cycle, t
 from network_brain import predict,DualModelNetworkBrain,NetworkBrain
 from parameter import PARAM
 from self_play import write_data, load_data, load_data_file, load_data_file_name
+from google_colab_helper import google_drive_path
+
 DN_FILTERS = 128
 DN_RESIDUAL_NUM = 16
 
@@ -41,8 +43,6 @@ def get_model_file_best_first(board_size : int = 15)->str:
     return './model/gomoku_{0}/first/best.keras'.format(board_size)
 def get_model_file_best_second(board_size : int = 15)->str:
     return './model/gomoku_{0}/second/best.keras'.format(board_size)
-
-google_drive_path = '/content/drive/MyDrive/'
 
 def get_model_file_best_gcolab(board_size: int=15)->str:
   return google_drive_path + 'model/gomoku_{0}/best.keras'.format(board_size)
@@ -104,33 +104,36 @@ def dual_network(file_best :str, board_size :int):
 
 
 
-def train_cycle_gomoku(board_size : int = 15
+def train_cycle_gomoku(
+                board_size : int = 15
+                ,brain_evaluate_count : int = 50
                 ,selfplay_repeat : int = 500
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_temperature:float = 1.0
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):     
     dual_network(get_model_file_best(board_size),board_size)
     train_cycle(
-        best_model_file=get_model_file_best(board_size), 
-        history_folder=get_history_folder(board_size),
-        game_board= GomokuBoard(),
+        game_board= GomokuBoard(board_size=board_size),
+        brain_evaluate_count=brain_evaluate_count,
+        best_model_file=get_model_file_best(board_size=board_size), 
+        history_folder=get_history_folder(board_size=board_size),
         selfplay_repeat= selfplay_repeat,
         epoch_count= epoch_count ,
         cycle_count=cycle_count,
         eval_count=eval_count ,
-        eval_temperature=eval_temperature,
         eval_judge=eval_judge)
 
 
-def train2_cycle_gomoku(board_size : int = 15
+def train2_cycle_gomoku(
+                board_size : int = 15
+                ,brain_evaluate_count : int = 50
                 ,selfplay_repeat : int = 500
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_temperature:float = 1.0
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):            
+        
     dual_network(get_model_file_best_first(board_size),board_size)
     dual_network(get_model_file_best_second(board_size),board_size)
     train_2_cycle(

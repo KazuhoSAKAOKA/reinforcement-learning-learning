@@ -1,4 +1,5 @@
 from game_board import GameBoard, GameRelativeResult
+from brains import Brain
 
 def evaluate_board_to_final(board : GameBoard, depth):
     '''
@@ -46,8 +47,9 @@ def alpha_beta(board, alpha, beta, depth, evaluate_board_alpha, evaluate_board_b
 
 
 
-class MiniMaxBrain:
+class MiniMaxBrain(Brain):
     def __init__(self):
+        super().__init__()
         pass
         self.name = "MiniMax"
     def get_name(self):
@@ -68,8 +70,9 @@ class MiniMaxBrain:
         #print('action:', str[0], '\nscore: ', str[1], '\n')
         return best_action
 
-class AlphaBetaBrain:
+class AlphaBetaBrain(Brain):
     def __init__(self):
+        super().__init__()
         pass
         self.name = "AlphaBetaBrain"
     def get_name(self):

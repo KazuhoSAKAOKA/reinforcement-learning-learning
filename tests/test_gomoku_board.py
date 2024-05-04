@@ -1,6 +1,10 @@
 import unittest
-
-from gomoku_board import GomokuBoard, GameRelativeResult
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from game_board import GameBoard, GameRelativeResult
+from stone_game_board import StoneGameBoard
+from gomoku_board import GomokuBoard
 
 class TestGomokuBoard(unittest.TestCase):
 

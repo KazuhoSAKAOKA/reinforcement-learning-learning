@@ -1,9 +1,20 @@
+from abc import abstractmethod
 import numpy as np
 from game_board import GameBoard
 
-class ConsoleDebugBrain:
-    def __init__(self):
+class Brain:
+    @abstractmethod
+    def get_name(self):
         pass
+    @abstractmethod
+    def select_action(self, board : GameBoard)->int:
+        pass
+    def __repr__(self) -> str:
+        return self.get_name()
+
+class ConsoleDebugBrain(Brain):
+    def __init__(self):
+        super().__init__()
     def get_name(self):
         return "ConsoleDebugBrain"
     def select_action(self, board : GameBoard)->int:
@@ -16,9 +27,9 @@ class ConsoleDebugBrain:
             if action in actions:
                 return action
 
-class RandomBrain:
+class RandomBrain(Brain):
     def __init__(self):
-        pass
+        super().__init__()
     def get_name(self):
         return "RandomBrain"
     def select_action(self, board : GameBoard)->int:

@@ -50,7 +50,7 @@ def train_network(load_model_path, history_folder, game_board : GameBoard, epoch
     model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
 
     history = load_data(history_folder)
-    xs, y_policies, y_values = game_board.convert_history_to_model_input(history)
+    xs, y_policies, y_values = game_board.reshape_history_to_input(history)
 
     def step_decay(epoch):
         x = 0.001
@@ -114,44 +114,45 @@ def judge_stats(stats: Tuple[GameStats, GameStats])->bool:
     return False
 
 
-def train_cycle(best_model_file : str, history_folder : str
-                ,game_board : GameBoard
+def train_cycle(
+                game_board : GameBoard
+                ,best_model_file : str
+                ,history_folder : str
+                ,brain_evaluate_count : int = 100
                 ,selfplay_repeat : int = 500
-                ,selfplay_temperature: float = 1.0
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_temperature:float = 1.0
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
     for i in range(cycle_count):
         print('cycle {}/{}'.format(i + 1, cycle_count))
         
         model = load_model(best_model_file)
-        brain = SelfplayNetworkBrain(selfplay_temperature, PARAM.evaluate_count, model)
+        brain = SelfplayNetworkBrain(brain_evaluate_count, model)
         self_play(brain, brain, game_board, selfplay_repeat, history_folder)
         latest_file_name = train_network(best_model_file, history_folder, game_board, epoch_count)
         best_model = load_model(best_model_file)
         latest_model = load_model(latest_file_name)
 
-        print('training first model file={0}'.format(latest_file_name))
+        print('training latest model file={0}'.format(latest_file_name))
         replace = True
         if eval_count > 0:
-            latest_brain = NetworkBrain(eval_temperature, PARAM.evaluate_count, latest_model)
-            best_brain = NetworkBrain(eval_temperature, PARAM.evaluate_count, best_model)
-            stats = evaluate_model(Agent(latest_brain), Agent(best_brain), game_board, eval_count)
+            latest_brain = NetworkBrain(brain_evaluate_count, latest_model)
+            best_brain = NetworkBrain(brain_evaluate_count, best_model)
+            stats = evaluate_model(agent_target=Agent(brain=latest_brain, name='latest'), agent_base=Agent(brain=best_brain, name='best'), board=game_board,play_count=eval_count)
             replace = eval_judge(stats)
         if replace:
             os.remove(best_model_file)
             shutil.copy(latest_file_name, best_model_file)
-            print("first model replace best model")
+            print("latest model replace best model")
 
-def train_2_cycle(first_best_model_file : str
+def train_2_cycle(game_board : GameBoard
+                ,brain_evaluate_count : int
+                ,first_best_model_file : str
                 ,second_best_model_file : str
                 ,history_first_folder : str
                 ,history_second_folder : str
-                ,game_board : GameBoard
                 ,selfplay_repeat : int = 500
-                ,selfplay_temperature: float = 1.0
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
@@ -161,8 +162,8 @@ def train_2_cycle(first_best_model_file : str
         print('cycle {}/{}'.format(i + 1, cycle_count))
         first_model = load_model(first_best_model_file)
         second_model = load_model(second_best_model_file)
-        first_brain = SelfplayDualModelNetworkBrain(selfplay_temperature, PARAM.evaluate_count, first_model, second_model)
-        second_brain = SelfplayDualModelNetworkBrain(selfplay_temperature, PARAM.evaluate_count, first_model, second_model)
+        first_brain = SelfplayDualModelNetworkBrain(brain_evaluate_count, first_model, second_model)
+        second_brain = SelfplayDualModelNetworkBrain(brain_evaluate_count, first_model, second_model)
         self_play2(first_brain, second_brain,game_board, selfplay_repeat, history_first_folder, history_second_folder)
         
         latest_file_name_first = train_network(first_best_model_file, history_first_folder, game_board, epoch_count)
@@ -175,8 +176,8 @@ def train_2_cycle(first_best_model_file : str
 
         replace = True
         if eval_count > 0:
-            latest_brain = DualModelNetworkBrain(eval_temperature, PARAM.evaluate_count, latest_first_model, latest_second_model)
-            best_brain = DualModelNetworkBrain(eval_temperature, PARAM.evaluate_count, best_first_model, best_second_model)            
+            latest_brain = DualModelNetworkBrain(eval_temperature, brain_evaluate_count, latest_first_model, latest_second_model)
+            best_brain = DualModelNetworkBrain(eval_temperature, brain_evaluate_count, best_first_model, best_second_model)            
             stats = evaluate_model(Agent(latest_brain), Agent(best_brain), game_board, eval_count)
             replace = eval_judge(stats)
         if replace:

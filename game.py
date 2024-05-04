@@ -80,7 +80,7 @@ class GameEnv:
             else:
                 draw += 1
             self.index += 1
-        print("First player {0} win: {1}, Second player {2} win: {3}, Draw: {4}".format(self.first_agent.get_brain_name(), first_player_win, self.second_agent.get_brain_name(), second_player_win, draw))
+        print("\r First player {0} win: {1}, Second player {2} win: {3}, Draw: {4}".format(self.first_agent.get_name(), first_player_win, self.second_agent.get_name(), second_player_win, draw))
         return GameStats(first_player_win, second_player_win, draw)
 
 

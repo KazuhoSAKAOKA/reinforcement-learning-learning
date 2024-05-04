@@ -171,7 +171,7 @@ def test1():
     print(board)
     #selected = network_agent.brain.select_action(board)
     #print(selected)
-    y = second_model.predict(board.get_model_input_shape(), batch_size=1, verbose=0)
+    y = second_model.predict(board.reshape_to_input(), batch_size=1, verbose=0)
     print(y)
 
 
@@ -213,7 +213,7 @@ def train_hand_data():
 
 
 
-    xs = board.get_model_input_shape()
+    xs = board.reshape_to_input()
     y = np.array([[0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0]])
     v = np.array([0.8])
     model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
@@ -230,5 +230,5 @@ def train_hand_data():
     print(pv)
 
 #train_hand_data()
-#train_cycle_tictactoe(5, 20, 5, 5, 0.1)
-train2_cycle_tictactoe(500, 200, 5, 5, 0.1)
+train_cycle_tictactoe(brain_evaluate_count=10, selfplay_repeat=10, epoch_count=10, cycle_count=10, eval_count=10)
+#train2_cycle_tictactoe(500, 200, 5, 5, 0.1)

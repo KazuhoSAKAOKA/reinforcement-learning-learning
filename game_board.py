@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import Tuple
 import numpy as np
 from enum import Enum
@@ -20,138 +21,79 @@ def get_first_player_value(result :GameResult) -> int:
     else:
         return 0
 class GameBoard:
-    def __init__(self, board_size : int, turn: int = 0 , last_action : int = -1):
-        self.self_cells = np.zeros((board_size, board_size), dtype=np.int8)
-        self.enemy_cells = np.zeros((board_size, board_size), dtype=np.int8)
-        self.board_size : int = board_size
+    def __init__(self, turn: int = 0 , last_action : int = -1):
         self.turn  : int = turn
         self.last_action  : int = last_action
     def get_turn(self)->int:
         return self.turn
+    def get_last_action(self)->int:
+        return self.last_action
     def reset(self):
-        self.self_cells = np.zeros((self.board_size, self.board_size), dtype=np.int8)
-        self.enemy_cells = np.zeros((self.board_size, self.board_size), dtype=np.int8)
         self.turn = 0
-        self.last_action = None
-    def get_output_size(self):
-        return self.board_size * self.board_size
-    def get_cell(self, x, y):
-        if self.self_cells[y][x] == 1:
-            return 1 if self.is_first_player_turn() else 2
-        if self.enemy_cells[y][x] == 1:
-            return 2 if self.is_first_player_turn() else 1
-        return 0
-    def get_model_state(self):
-        x = [self.self_cells.reshape(self.board_size*self.board_size,).tolist(), self.enemy_cells.reshape(self.board_size*self.board_size,).tolist()]
-        return x
+        self.last_action = -1
+    @abstractmethod
+    # 行動空間サイズ
+    def get_output_size(self)->int:
+        pass
 
-    def get_model_input_shape(self)->np.ndarray:
-        x = np.reshape([self.self_cells, self.enemy_cells], (2, self.board_size, self.board_size))
-        x = x.transpose(1, 2, 0)
-        x = x.reshape(1, self.board_size, self.board_size, 2)
-        return x
-    def index_to_xy(self, index:int)->Tuple[int,int]:
-        return index % self.board_size, index // self.board_size
-    def xy_to_index(self, x:int, y:int)->int:
-        return y * self.board_size + x
-    
-    def convert_history_to_model_input(self, history) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        xs, y_policies, y_values = zip(*history)
-        xs = np.array(xs)
-        a,b,c = (self.board_size, self.board_size, 2)
-        xs = xs.reshape(len(xs), c, a, b).transpose(0, 2, 3, 1)        
-        y_policies = np.array(y_policies)
-        y_values = np.array(y_values)
-        return xs, y_policies, y_values
 
+    # historyに記憶させる形状に変換
+    @abstractmethod
+    def to_hisotry_record(self)->any:
+        pass
+
+    # モデルのに渡す形状に変換
+    @abstractmethod
+    def reshape_to_input(self)->np.ndarray:
+        pass    
+    # historyからモデルに渡す形状に変換
+    @abstractmethod
+    def reshape_history_to_input(self, history) -> any:
+        pass
+
+    # 次の状態への遷移
+    @abstractmethod
     def transit_next(self, action)-> Tuple['GameBoard', bool]:
-        '''
-        次の状態を返す
-        '''
-        x = action % self.board_size
-        y = action // self.board_size
-        if self.self_cells[y][x] != 0 or self.enemy_cells[y][x] != 0:
-            return self, False
-        next = self.__class__()
-        next.self_cells = self.enemy_cells.copy()
-        next.enemy_cells = self.self_cells.copy()
-        next.enemy_cells[y][x] = 1
-        next.board_size = self.board_size
-        next.turn = self.turn + 1
-        next.last_action = action
-        return next, True
-
+        pass
+    
+    # 先手番かどうか　パスがあるようなゲームであればオーバーライドする
     def is_first_player_turn(self)->bool:
         return self.turn % 2 == 0
     def is_second_player_turn(self)->bool:
         return not self.is_first_player_turn()
-    def is_first_player_last_operated(self)->bool:
-        return not self.is_first_player_turn()
     
     def convert_to_result(self, relative_result : GameRelativeResult)->GameResult:
         if relative_result == GameRelativeResult.win_last_play_player:
-            if self.is_first_player_last_operated():
+            if self.is_second_player_turn():
                 return GameResult.win_first_player
             else:
                 return GameResult.win_second_player
         elif relative_result == GameRelativeResult.lose_last_play_player:
-            if self.is_first_player_last_operated():
+            if self.is_second_player_turn():
                 return GameResult.win_second_player
             else:
                 return GameResult.win_first_player
         else:
             return GameResult.draw
+    
     def __repr__(self) -> str:
-        s = "---------------------------\n"
-        self_stone = "o" if self.is_first_player_turn() else "x"
-        enemy_stone = "x" if self.is_first_player_turn() else "o"
-        for i in range(self.board_size):
-            for j in range(self.board_size):
-                if self.self_cells[i][j] == 1:
-                    s += self_stone
-                elif self.enemy_cells[i][j] == 1:
-                    s += enemy_stone
-                else:
-                    s += "-"
-            s += "\n"
-        s += "\n"
-        return s
+        return "GameBoard"
+
     def output_for_debug(self):
-        print("---------------------------")
-        self_stone = "o" if self.is_first_player_turn() else "x"
-        enemy_stone = "x" if self.is_first_player_turn() else "o"
-        for i in range(self.board_size):
-            for j in range(self.board_size):
-                if self.self_cells[i][j] == 1:
-                    print(self_stone, end="")
-                elif self.enemy_cells[i][j] == 1:
-                    print(enemy_stone, end="")
-                else:
-                    print("-", end="")
-            print("") 
+        print(self)
+
+    @abstractmethod
     def get_legal_actions(self)->np.ndarray:
-        '''
-        空いているマスのリストを返す
-        '''
-        actions = np.array([], dtype=np.int8)
-        for i in range(self.board_size):
-            for j in range(self.board_size):
-                if self.self_cells[i][j] == 0 and self.enemy_cells[i][j] == 0:
-                    actions = np.append(actions, i * self.board_size + j)
-        return actions
+        pass
     def get_legal_actions_ratio(self)->np.ndarray:
-        '''
-        行動可能なアクションを1.0,不可能なアクションを0.0とした配列を返す
-        '''
-        actions = np.zeros(self.board_size * self.board_size, dtype=np.float32)
-        for i in range(self.board_size):
-            for j in range(self.board_size):
-                if self.self_cells[i][j] == 0 and self.enemy_cells[i][j] == 0:
-                    actions[i * self.board_size + j] = 1.0
+        actions = np.zeros(self.get_output_size(), dtype=np.float32)
+        for action in self.get_legal_actions():
+            actions[action] = 1.0
         return actions
 
+    @abstractmethod
     def judge_last_action(self)-> Tuple[bool, GameRelativeResult]:
-        Exception("Not implemented")
+        pass
     def is_done(self)->bool:
         done, _ = self.judge_last_action()
         return done

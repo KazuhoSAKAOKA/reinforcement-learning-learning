@@ -3,7 +3,7 @@ from agent import Agent
 from game_board import GameBoard, get_first_player_value, GameResult
 from game import GameEnv
 from datetime import datetime
-from selfplay_brain import SelfplayBrain, SelfplayRandomBrain
+from selfplay_brain import SelfplayBrain
 import pickle
 import os
 from tictactoe_board import TicTacToeBoard
@@ -13,7 +13,10 @@ def write_data(folder:str, history)->str:
     now = datetime.now()
     folder = '{0}/'.format(folder)
     os.makedirs(folder, exist_ok=True)
-    path = folder + '/{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
+    if folder[:-1] == '/':
+        path =  folder + '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
+    else:
+        path =  folder + '/{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second) 
     with open(path, mode='wb') as f:
         pickle.dump(history, f)
     return path
@@ -48,7 +51,6 @@ def self_play(first_brain: SelfplayBrain, second_brain : SelfplayBrain, board : 
         second_brain.update_history(-value)
         history.extend(first_brain.history)
         history.extend(second_brain.history)
-        #history.append([board.get_model_state(), [0] * board.get_output_size(), value])
         first_brain.reset()
         second_brain.reset()
         print('\rSelf play {}/{}'.format(i + 1, repeat_count), end='')
@@ -77,7 +79,6 @@ def self_play2(first_brain: SelfplayBrain, second_brain : SelfplayBrain, board :
         second_brain.update_history(-value)
         history_first.extend(first_brain.history)
         history_second.extend(second_brain.history)
-        #history.append([board.get_model_state(), [0] * board.get_output_size(), value])
         first_brain.reset()
         second_brain.reset()
         print('\rSelf play {}/{}'.format(i + 1, repeat_count), end='')
@@ -87,7 +88,7 @@ def self_play2(first_brain: SelfplayBrain, second_brain : SelfplayBrain, board :
     print('history file:{}, {}'.format(filename_first, filename_second))
     return filename_first,filename_second
 
-
+'''
 def debug_tictactoe():
     board = TicTacToeBoard()
     first_brain = SelfplayRandomBrain()
@@ -95,8 +96,6 @@ def debug_tictactoe():
     count = 2000
     self_play(first_brain, second_brain, board, count, './data/tictactoe')
     self_play2(first_brain, second_brain, board, count, './data/tictactoe/first','./data/tictactoe/second')
+'''
 
-
-if __name__ == '__main__':
-    debug_tictactoe()
 
