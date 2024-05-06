@@ -89,3 +89,21 @@ class StoneGameBoard(GameBoard):
                     actions = np.append(actions, i * self.board_size + j)
         return actions
 
+    def to_state_key(self)->str:
+        temp = ''
+        if self.is_first_player_turn():
+            my = 'o'
+            you = 'x'
+        else:
+            my = 'x'
+            you = 'o'
+        for i in range(self.board_size):
+            for j in range(self.board_size):
+                if self.self_cells[i][j] == 1:
+                    temp += my
+                elif self.enemy_cells[i][j] == 1:
+                    temp += you
+                else:
+                    temp += '-'
+        return temp
+    

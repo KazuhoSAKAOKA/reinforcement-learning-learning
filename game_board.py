@@ -56,6 +56,10 @@ class GameBoard:
     def transit_next(self, action)-> Tuple['GameBoard', bool]:
         pass
     
+    @abstractmethod
+    def to_state_key(self)->str:
+        pass
+
     # 先手番かどうか　パスがあるようなゲームであればオーバーライドする
     def is_first_player_turn(self)->bool:
         return self.turn % 2 == 0

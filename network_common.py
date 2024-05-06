@@ -22,6 +22,7 @@ from parameter import PARAM
 from typing import Tuple
 from selfplay_brain import SelfplayBrain
 from network_brain import NetworkBrain, SelfplayBrain, SelfplayNetworkBrain, SelfplayDualModelNetworkBrain, DualModelNetworkBrain
+from threadsafe_dict import ThreadSafeDict
 
 def train_network(load_model_path, history_file, game_board : GameBoard, epoch_count : int)->Tuple[Model, str]:
 
@@ -53,7 +54,7 @@ def train_network(load_model_path, history_file, game_board : GameBoard, epoch_c
 
 
 def evaluate_model(agent_target : Agent , agent_base: Agent, board : GameBoard, play_count: int, executor:concurrent.futures.ThreadPoolExecutor = None)->Tuple[GameStats, GameStats]:
-
+    print('begin evaluate best vs latest')
     if executor is None:
         env = GameEnv(board, agent_target, agent_base, episode_callback=lambda i, _1, _2: print('\rEvaluate {}/{}'.format(i + 1, play_count), end=''))
         first = env.play_n(play_count)
@@ -90,26 +91,37 @@ def train_cycle(
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
+                ,use_cache = False):
     if eval_count > 0:
         executor = concurrent.futures.ThreadPoolExecutor(2)
     else:
         executor = None
 
+    if use_cache:
+        ts_dict = ThreadSafeDict()
+    else:
+        ts_dict = None
+
     for i in range(cycle_count):
         print('cycle {}/{}'.format(i + 1, cycle_count))
-        
+        if use_cache:
+            ts_dict.clear()
         best_model = tf.keras.models.load_model(best_model_file)
-        first_brain = SelfplayNetworkBrain(brain_evaluate_count, best_model)
-        second_brain = SelfplayNetworkBrain(brain_evaluate_count, best_model)
+        first_brain = SelfplayNetworkBrain(evaluate_count=brain_evaluate_count, model=best_model, ts_dict=ts_dict)
+        second_brain = SelfplayNetworkBrain(evaluate_count=brain_evaluate_count, model=best_model, ts_dict=ts_dict)
         history_file = self_play(first_brain, second_brain, game_board, selfplay_repeat, history_folder)
         latest_model, latest_file_name = train_network(best_model_file, history_file, game_board, epoch_count)
 
         print('training latest model file={0}'.format(latest_file_name))
         replace = True
         if eval_count > 0:
-            latest_brain = NetworkBrain(brain_evaluate_count, latest_model)
-            best_brain = NetworkBrain(brain_evaluate_count, best_model)
+            if use_cache:
+                latest_dict = ThreadSafeDict()
+            else:
+                latest_dict = None
+            latest_brain = NetworkBrain(brain_evaluate_count, latest_model, latest_dict)
+            best_brain = NetworkBrain(brain_evaluate_count, best_model, ts_dict)
             stats = evaluate_model(agent_target=Agent(brain=latest_brain, name='latest'), agent_base=Agent(brain=best_brain, name='best'), board=game_board,play_count=eval_count, executor=executor)
             replace = eval_judge(stats)
         if replace:
@@ -131,32 +143,38 @@ def train_cycle_dualmodel(game_board : GameBoard
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
                 ,eval_temperature:float = 1.0
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
+                ,use_cache = False):
     executor = concurrent.futures.ThreadPoolExecutor(2)
+    if use_cache:
+        ts_dict = ThreadSafeDict()
+    else:
+        ts_dict = None    
     for i in range(cycle_count):
         print('cycle {}/{}'.format(i + 1, cycle_count))
+        if use_cache:
+            ts_dict.clear()
         first_model = tf.keras.models.load_model(first_best_model_file)
         second_model = tf.keras.models.load_model(second_best_model_file)
-        first_brain = SelfplayDualModelNetworkBrain(brain_evaluate_count, first_model, second_model)
-        second_brain = SelfplayDualModelNetworkBrain(brain_evaluate_count, first_model, second_model)
+        first_brain = SelfplayDualModelNetworkBrain(brain_evaluate_count, first_model, second_model, ts_dict)
+        second_brain = SelfplayDualModelNetworkBrain(brain_evaluate_count, first_model, second_model, ts_dict)
         first_history_file, second_history_fine = self_play_dualmodel(first_brain, second_brain,game_board, selfplay_repeat, history_first_folder, history_second_folder)
         
         future_first = executor.submit(lambda: train_network(first_best_model_file, first_history_file, game_board, epoch_count))
         future_second = executor.submit(lambda: train_network(second_best_model_file, second_history_fine, game_board, epoch_count))
         latest_first_model, latest_file_name_first = future_first.result()
         latest_second_model, latest_file_name_second = future_second.result()
-        # latest_file_name_first = train_network(first_best_model_file, first_history_file, game_board, epoch_count)
-        # latest_file_name_second = train_network(second_best_model_file, second_history_fine, game_board, epoch_count)
+
         print('training first model file={0}, second model file={1}'.format(latest_file_name_first, latest_file_name_second))
-        # latest_first_model = tf.saved_model.load(latest_file_name_first)
-        # latest_second_model = tf.saved_model.load(latest_file_name_second)
-        #best_first_model = tf.saved_model.load(first_best_model_file)    
-        #best_second_model = tf.saved_model.load(second_best_model_file)
 
         replace = True
         if eval_count > 0:
-            latest_brain = DualModelNetworkBrain(brain_evaluate_count, latest_first_model, latest_second_model)
-            best_brain = DualModelNetworkBrain(brain_evaluate_count, first_model, second_model)            
+            if use_cache:
+                latest_dict = ThreadSafeDict()
+            else:
+                latest_dict = None            
+            latest_brain = DualModelNetworkBrain(brain_evaluate_count, latest_first_model, latest_second_model, latest_dict)
+            best_brain = DualModelNetworkBrain(brain_evaluate_count, first_model, second_model, ts_dict)
             stats = evaluate_model(agent_target=Agent(brain=latest_brain, name='latest'), agent_base=Agent(brain=best_brain, name='best'), board=game_board,play_count=eval_count, executor=executor)
             replace = eval_judge(stats)
         if replace:

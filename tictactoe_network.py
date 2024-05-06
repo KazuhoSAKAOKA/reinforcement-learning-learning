@@ -167,7 +167,8 @@ def train_cycle_tictactoe(
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):        
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
+                ,use_cache = False):        
     dual_network(MODEL_FILE_BEST)
     train_cycle(
         game_board= TicTacToeBoard(),
@@ -178,7 +179,8 @@ def train_cycle_tictactoe(
         epoch_count= epoch_count ,
         cycle_count=cycle_count,
         eval_count=eval_count ,
-        eval_judge=eval_judge)
+        eval_judge=eval_judge,
+        use_cache=use_cache)
 
 
 def train_cycle_dualmodel_tictactoe(
@@ -187,7 +189,8 @@ def train_cycle_dualmodel_tictactoe(
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
+                ,use_cache = False):
     dual_network(MODEL_FILE_BEST_FIRST)
     dual_network(MODEL_FILE_BEST_SECOND)
     train_cycle_dualmodel(
@@ -201,7 +204,8 @@ def train_cycle_dualmodel_tictactoe(
         epoch_count= epoch_count ,
         cycle_count=cycle_count,
         eval_count=eval_count ,
-        eval_judge=eval_judge)
+        eval_judge=eval_judge,
+        use_cache=use_cache)
 
 def train_cycle_tictactoe_gcolab(
                 brain_evaluate_count : int = 50
@@ -209,7 +213,8 @@ def train_cycle_tictactoe_gcolab(
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats):
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
+                ,use_cache = False):
     best_file = get_model_file_best_gcolab()         
     dual_network(best_file)
     train_cycle(
@@ -221,5 +226,30 @@ def train_cycle_tictactoe_gcolab(
         epoch_count= epoch_count ,
         cycle_count=cycle_count,
         eval_count=eval_count ,
-        eval_judge=eval_judge)
+        eval_judge=eval_judge,
+        use_cache=use_cache)
 
+
+def train_cycle_dualmodel_tictactoe_gcolab(
+                brain_evaluate_count : int = 50
+                ,selfplay_repeat : int = 500
+                ,epoch_count : int = 200
+                ,cycle_count : int = 10
+                ,eval_count: int = 20
+                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
+                ,use_cache = False):
+    dual_network(MODEL_FILE_BEST_FIRST)
+    dual_network(MODEL_FILE_BEST_SECOND)
+    train_cycle_dualmodel(
+        game_board= TicTacToeBoard(),
+        brain_evaluate_count= brain_evaluate_count,
+        first_best_model_file=MODEL_FILE_BEST_FIRST,
+        second_best_model_file=MODEL_FILE_BEST_SECOND,
+        history_first_folder=HISTORY_FOLDER_FIRST,
+        history_second_folder=HISTORY_FOLDER_SECOND, 
+        selfplay_repeat= selfplay_repeat,
+        epoch_count= epoch_count ,
+        cycle_count=cycle_count,
+        eval_count=eval_count ,
+        eval_judge=eval_judge,
+        use_cache=use_cache)

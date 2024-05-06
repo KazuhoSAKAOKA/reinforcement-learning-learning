@@ -5,7 +5,7 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.callbacks import LearningRateScheduler, LambdaCallback
 from tensorflow import saved_model
 from network_common import NetworkBrain
-from tictactoe_network import MODEL_FILE_BEST, dual_network, DN_FILTERS,DN_INPUT_SHAPE, DN_OUTPUT_SIZE,residual_block,conv,DN_RESIDUAL_NUM, train_cycle_tictactoe, train_cycle_dualmodel_tictactoe
+from tictactoe_network import MODEL_FILE_BEST, dual_network, DN_FILTERS,DN_INPUT_SHAPE, DN_OUTPUT_SIZE,residual_block,conv,DN_RESIDUAL_NUM, train_cycle_tictactoe, train_cycle_dualmodel_tictactoe,MODEL_FILE_BEST_FIRST,MODEL_FILE_BEST_SECOND
 from network_brain import predict, SelfplayNetworkBrain
 from tictactoe_board import TicTacToeBoard
 from mini_max import AlphaBetaBrain
@@ -14,6 +14,8 @@ from game import GameEnv
 from self_play import self_play, SelfplayBrain
 from gui import HumanGuiBrain, run_gui
 
+import os
+import time 
 import numpy as np
 import pv_mcts
 import pickle
@@ -236,9 +238,38 @@ def debug_gui():
     del first_model
     del second_model
 
+'''
+if os.path.exists(MODEL_FILE_BEST):
+    os.remove(MODEL_FILE_BEST)
+start = time.time()
+train_cycle_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=True)
+end = time.time()
+print("Single=======(use cache)elapsed time = ", end - start)
 
-#train_cycle_tictactoe(50, 2, 2, 2, 4)
-train_cycle_dualmodel_tictactoe(50, 2, 2, 2, 4)
+os.remove(MODEL_FILE_BEST)
+start = time.time()
+train_cycle_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=False)
+end = time.time()
+print("Single=======(not use cache)elapsed time = ", end - start)
+'''    
+
+if os.path.exists(MODEL_FILE_BEST_FIRST):
+    os.remove(MODEL_FILE_BEST_FIRST)
+if os.path.exists(MODEL_FILE_BEST_SECOND):
+    os.remove(MODEL_FILE_BEST_SECOND)
+start = time.time()
+train_cycle_dualmodel_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=True)
+end = time.time()
+print("Dual=======(use cache)elapsed time = ", end - start)
+
+os.remove(MODEL_FILE_BEST_FIRST)
+os.remove(MODEL_FILE_BEST_SECOND)
+start = time.time()
+train_cycle_dualmodel_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=False)
+end = time.time()
+print("Dual=======(not use cache)elapsed time = ", end - start)
+
+#train_cycle_dualmodel_tictactoe(50, 2, 2, 2, 4)
 
 #debug_gui()
 
