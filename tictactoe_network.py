@@ -257,7 +257,7 @@ def train_cycle_dualmodel_tictactoe_gcolab(
         first_best_model_file=first_best_file,
         second_best_model_file=second_best_file,
         history_first_folder=get_history_folder_first_gcolab(),
-        history_second_folder=get_history_folder_second_gcolab, 
+        history_second_folder=get_history_folder_second_gcolab(), 
         selfplay_repeat= selfplay_repeat,
         epoch_count= epoch_count ,
         cycle_count=cycle_count,
