@@ -57,7 +57,7 @@ def self_play(first_brain: SelfplayBrain, second_brain : SelfplayBrain, board : 
     print('history file:{}'.format(filename))
     return filename
 
-def self_play2(first_brain: SelfplayBrain, second_brain : SelfplayBrain, board : GameBoard, repeat_count : int, history_folder_first: str, history_folder_second: str) -> Tuple[str,str]:
+def self_play_dualmodel(first_brain: SelfplayBrain, second_brain : SelfplayBrain, board : GameBoard, repeat_count : int, history_folder_first: str, history_folder_second: str) -> Tuple[str,str]:
     history_first=[]
     history_second=[]
     env = GameEnv(board, Agent(first_brain), Agent(second_brain))

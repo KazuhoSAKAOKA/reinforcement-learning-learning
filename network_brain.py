@@ -51,9 +51,9 @@ class DualModelNetworkBrain(Brain):
     
     def select_action(self, board)->int:
         if board.is_first_player_turn():
-            ratios = pv_mcts_policies(board, self.temperature, self.evaluate_count, lambda x: predict(self.first_model, x) , lambda x: predict(self.second_model, x))
+            ratios = pv_mcts_policies(board, self.evaluate_count, lambda x: predict(self.first_model, x) , lambda x: predict(self.second_model, x))
         else:
-            ratios = pv_mcts_policies(board, self.temperature, self.evaluate_count, lambda x: predict(self.second_model, x) , lambda x: predict(self.first_model, x))
+            ratios = pv_mcts_policies(board, self.evaluate_count, lambda x: predict(self.second_model, x) , lambda x: predict(self.first_model, x))
         self.last_policies = ratios
         action = np.argmax(ratios)
         return action
@@ -84,9 +84,9 @@ class SelfplayDualModelNetworkBrain(SelfplayBrain):
         return "SelfplayDualModelNetworkBrain"
     def select_action(self, board : GameBoard)->int:
         if board.is_first_player_turn():
-            policies = pv_mcts_policies_boltzman(board, self.temperature, self.evaluate_count, lambda x: predict(self.first_model, x) , lambda x: predict(self.second_model, x))
+            policies = pv_mcts_policies_boltzman(board, self.evaluate_count, lambda x: predict(self.first_model, x) , lambda x: predict(self.second_model, x))
         else:
-            policies = pv_mcts_policies_boltzman(board, self.temperature, self.evaluate_count, lambda x: predict(self.second_model, x) , lambda x: predict(self.first_model, x))
+            policies = pv_mcts_policies_boltzman(board, self.evaluate_count, lambda x: predict(self.second_model, x) , lambda x: predict(self.first_model, x))
         action = np.random.choice(range(0, board.get_output_size()), p=policies)
         self.register_policies(board, policies)
         return action

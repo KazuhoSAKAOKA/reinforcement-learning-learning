@@ -3,14 +3,17 @@ from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras import backend as K
 from tensorflow.keras.callbacks import LearningRateScheduler, LambdaCallback
-from network_common import load_model,NetworkBrain, load_data
-from tictactoe_network import MODEL_FILE_BEST, dual_network, DN_FILTERS,DN_INPUT_SHAPE, DN_OUTPUT_SIZE,residual_block,conv,DN_RESIDUAL_NUM, train_cycle_tictactoe, train2_cycle_tictactoe
+from tensorflow import saved_model
+from network_common import NetworkBrain
+from tictactoe_network import MODEL_FILE_BEST, dual_network, DN_FILTERS,DN_INPUT_SHAPE, DN_OUTPUT_SIZE,residual_block,conv,DN_RESIDUAL_NUM, train_cycle_tictactoe, train_cycle_dualmodel_tictactoe
 from network_brain import predict, SelfplayNetworkBrain
 from tictactoe_board import TicTacToeBoard
 from mini_max import AlphaBetaBrain
 from agent import Agent
 from game import GameEnv
 from self_play import self_play, SelfplayBrain
+from gui import HumanGuiBrain, run_gui
+
 import numpy as np
 import pv_mcts
 import pickle
@@ -140,21 +143,6 @@ def train_handdata():
     p, v = predict(model, one_board)
     print(p)
     print(v)
-#file = MODEL_FILE_BEST
-#file = './model/tictactoe/20240314225839.keras'
-#model = load_model(MODEL_FILE_BEST)
-#debug_play(model)
-
-#degut_predict_only(model)
-#debug_mcts(model)
-
-
-#K.clear_session()
-#del model
-
-#train_handdata()
-
-#history_convert('./data/tictactoe/second/20240405234236.history')
 
 
 def test1():
@@ -230,10 +218,34 @@ def train_hand_data():
     pv = model.predict(xs, batch_size=1, verbose=0)
     print(pv)
 
+
+
+def debug_gui():
+
+    board = TicTacToeBoard()
+    file = '/home/kazuho/python/reinforcement-learning-learning/google_drive/tictactoe/best.keras'
+    model = saved_model.load(file)
+
+    dl_agent = Agent(NetworkBrain(50, model))
+    human_agent = Agent(HumanGuiBrain())
+
+    run_gui(board=board, first_agent=human_agent, second_agent=dl_agent)
+    run_gui(board=board, first_agent=dl_agent, second_agent=human_agent)
+
+    K.clear_session()
+    del first_model
+    del second_model
+
+
+#train_cycle_tictactoe(50, 2, 2, 2, 4)
+train_cycle_dualmodel_tictactoe(50, 2, 2, 2, 4)
+
+#debug_gui()
+
 #train_hand_data()
 #train_cycle_tictactoe(brain_evaluate_count=10, selfplay_repeat=10, epoch_count=10, cycle_count=10, eval_count=10)
 #train2_cycle_tictactoe(500, 200, 5, 5, 0.1)
-train_cycle_tictactoe(5, 2, 2, 1, 0)
+#train_cycle_tictactoe(5, 2, 2, 1, 0)
 
 #dual_network(MODEL_FILE_BEST)
 #model = load_model(MODEL_FILE_BEST)
