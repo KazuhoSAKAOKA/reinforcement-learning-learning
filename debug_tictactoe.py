@@ -13,6 +13,7 @@ from agent import Agent
 from game import GameEnv
 from self_play import self_play, SelfplayBrain
 from gui import HumanGuiBrain, run_gui
+from threadsafe_dict import ThreadSafeDict
 
 import os
 import time 
@@ -20,6 +21,7 @@ import numpy as np
 import pv_mcts
 import pickle
 import parameter as PARAM
+import tensorflow as tf
 
 def output_step(board :TicTacToeBoard, model :Model):
     p, v = predict(model, board)
@@ -225,49 +227,50 @@ def train_hand_data():
 def debug_gui():
 
     board = TicTacToeBoard()
-    file = '/home/kazuho/python/reinforcement-learning-learning/google_drive/tictactoe/best.keras'
-    model = saved_model.load(file)
+    file = './google_drive/tictactoe/best (1).keras'
+    model = tf.keras.models.load_model(file)
 
-    dl_agent = Agent(NetworkBrain(50, model))
+    dl_agent = Agent(NetworkBrain(50, model, ThreadSafeDict()))
     human_agent = Agent(HumanGuiBrain())
 
     run_gui(board=board, first_agent=human_agent, second_agent=dl_agent)
     run_gui(board=board, first_agent=dl_agent, second_agent=human_agent)
 
-    K.clear_session()
-    del first_model
-    del second_model
+    del model
+    tf.keras.backend.clear_session()
+    
+def check_time():
+    if os.path.exists(MODEL_FILE_BEST):
+        os.remove(MODEL_FILE_BEST)
+    start = time.time()
+    train_cycle_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=True)
+    end = time.time()
+    print("Single=======(use cache)elapsed time = ", end - start)
 
-'''
-if os.path.exists(MODEL_FILE_BEST):
     os.remove(MODEL_FILE_BEST)
-start = time.time()
-train_cycle_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=True)
-end = time.time()
-print("Single=======(use cache)elapsed time = ", end - start)
+    start = time.time()
+    train_cycle_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=False)
+    end = time.time()
+    print("Single=======(not use cache)elapsed time = ", end - start)
+    if os.path.exists(MODEL_FILE_BEST_FIRST):
+        os.remove(MODEL_FILE_BEST_FIRST)
+    if os.path.exists(MODEL_FILE_BEST_SECOND):
+        os.remove(MODEL_FILE_BEST_SECOND)
+        
+    start = time.time()
+    train_cycle_dualmodel_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=1,eval_count=4,use_cache=True)
+    end = time.time()
+    print("Dual=======(use cache)elapsed time = ", end - start)
 
-os.remove(MODEL_FILE_BEST)
-start = time.time()
-train_cycle_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=False)
-end = time.time()
-print("Single=======(not use cache)elapsed time = ", end - start)
-'''    
-
-if os.path.exists(MODEL_FILE_BEST_FIRST):
     os.remove(MODEL_FILE_BEST_FIRST)
-if os.path.exists(MODEL_FILE_BEST_SECOND):
     os.remove(MODEL_FILE_BEST_SECOND)
-start = time.time()
-train_cycle_dualmodel_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=True)
-end = time.time()
-print("Dual=======(use cache)elapsed time = ", end - start)
+    start = time.time()
+    train_cycle_dualmodel_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=False)
+    end = time.time()
+    print("Dual=======(not use cache)elapsed time = ", end - start)
 
-os.remove(MODEL_FILE_BEST_FIRST)
-os.remove(MODEL_FILE_BEST_SECOND)
-start = time.time()
-train_cycle_dualmodel_tictactoe(brain_evaluate_count=50, selfplay_repeat=20, epoch_count=20, cycle_count=2,eval_count=4,use_cache=False)
-end = time.time()
-print("Dual=======(not use cache)elapsed time = ", end - start)
+
+debug_gui()
 
 #train_cycle_dualmodel_tictactoe(50, 2, 2, 2, 4)
 

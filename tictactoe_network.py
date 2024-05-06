@@ -39,12 +39,20 @@ HISTORY_FOLDER_SECOND = './data/tictactoe/second'
 
 def get_model_file_best_gcolab()->str:
   return google_drive_path + 'model/tictactoe/best.keras'
+def get_history_folder_gcolab()->str:
+  return google_drive_path + 'history/tictactoe'
+
+
 def get_model_file_first_best_gcolab()->str:
   return google_drive_path + 'model/tictactoe/first/best.keras'
 def get_model_file_second_best_gcolab()->str:
   return google_drive_path + 'model/tictactoe/second/best.keras'
-def get_history_folder_gcolab()->str:
-  return google_drive_path + 'history/tictactoe'
+
+def get_history_folder_first_gcolab()->str:
+  return google_drive_path + 'history/tictactoe/first'
+def get_history_folder_second_gcolab()->str:
+  return google_drive_path + 'history/tictactoe/second'
+
 
 def conv(filters):
     return Conv2D(filters, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))
@@ -168,7 +176,7 @@ def train_cycle_tictactoe(
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = False):        
+                ,use_cache = True):        
     dual_network(MODEL_FILE_BEST)
     train_cycle(
         game_board= TicTacToeBoard(),
@@ -190,7 +198,7 @@ def train_cycle_dualmodel_tictactoe(
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = False):
+                ,use_cache = True):
     dual_network(MODEL_FILE_BEST_FIRST)
     dual_network(MODEL_FILE_BEST_SECOND)
     train_cycle_dualmodel(
@@ -214,7 +222,7 @@ def train_cycle_tictactoe_gcolab(
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = False):
+                ,use_cache = True):
     best_file = get_model_file_best_gcolab()         
     dual_network(best_file)
     train_cycle(
@@ -237,16 +245,19 @@ def train_cycle_dualmodel_tictactoe_gcolab(
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = False):
-    dual_network(MODEL_FILE_BEST_FIRST)
-    dual_network(MODEL_FILE_BEST_SECOND)
+                ,use_cache = True):
+    first_best_file = get_model_file_first_best_gcolab()         
+    second_best_file = get_model_file_second_best_gcolab()         
+
+    dual_network(first_best_file)
+    dual_network(second_best_file)
     train_cycle_dualmodel(
         game_board= TicTacToeBoard(),
         brain_evaluate_count= brain_evaluate_count,
-        first_best_model_file=MODEL_FILE_BEST_FIRST,
-        second_best_model_file=MODEL_FILE_BEST_SECOND,
-        history_first_folder=HISTORY_FOLDER_FIRST,
-        history_second_folder=HISTORY_FOLDER_SECOND, 
+        first_best_model_file=first_best_file,
+        second_best_model_file=second_best_file,
+        history_first_folder=get_history_folder_first_gcolab(),
+        history_second_folder=get_history_folder_second_gcolab, 
         selfplay_repeat= selfplay_repeat,
         epoch_count= epoch_count ,
         cycle_count=cycle_count,

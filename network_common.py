@@ -92,7 +92,7 @@ def train_cycle(
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = False):
+                ,use_cache = True):
     if eval_count > 0:
         executor = concurrent.futures.ThreadPoolExecutor(2)
     else:
@@ -144,7 +144,7 @@ def train_cycle_dualmodel(game_board : GameBoard
                 ,eval_count: int = 20
                 ,eval_temperature:float = 1.0
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = False):
+                ,use_cache = True):
     executor = concurrent.futures.ThreadPoolExecutor(2)
     if use_cache:
         ts_dict = ThreadSafeDict()
