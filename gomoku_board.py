@@ -100,7 +100,7 @@ class GomokuBoard(StoneGameBoard):
         '''
         最後に打った手による勝敗を判定する
         '''
-        if self.last_action is None:
+        if self.last_action is None or self.last_action < 0:
             return False, None
         x = self.last_action % self.board_size
         y = self.last_action // self.board_size
@@ -155,7 +155,7 @@ class GomokuBoard(StoneGameBoard):
         # 初手の場合、盤面の中央に打つ
         if self.turn == 0:
             actions[self.board_size//2][self.board_size//2] = 1.0
-            return 
+            return actions
         for i in range(self.board_size):
             for j in range(self.board_size):
                 if self.self_cells[i][j] == 0 and self.enemy_cells[i][j] == 0:

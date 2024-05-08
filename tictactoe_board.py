@@ -41,7 +41,7 @@ class TicTacToeBoard(StoneGameBoard):
         '''
         最後に打った手による勝敗を判定する
         '''
-        if self.last_action is None:
+        if self.last_action is None or self.last_action < 0:
             return False, None
         x = self.last_action % self.board_size
         y = self.last_action // self.board_size

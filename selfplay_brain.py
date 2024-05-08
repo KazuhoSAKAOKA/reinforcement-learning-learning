@@ -20,14 +20,22 @@ class SelfplayBrain(Brain):
     def reset(self):
         self.history = []
 
-'''
+
 class SelfplayRandomBrain(SelfplayBrain):
     def __init__(self):
         super().__init__()
     def get_name(self):
         return "SelfplayRandomBrain"
     def select_action(self, board : GameBoard)->int:
-        action = np.random.choice(board.get_legal_actions())
-        self.register_action(board, action)
-        return action
-'''
+        legal_actions = board.get_legal_actions()
+        selected = np.random.choice(legal_actions)
+        ratios = np.zeros(board.get_output_size(), dtype=np.float32)
+        base_ratio = 1.0 / len(legal_actions + 1)
+        for action in legal_actions:
+            if selected == action:
+                ratios[action] = base_ratio * 2
+            else:
+                ratios[action] = base_ratio
+
+        self.register_policies(board, ratios)
+        return selected

@@ -2,8 +2,9 @@ from typing import Callable, Tuple
 from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D, Dense, GlobalAveragePooling2D, Input
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.regularizers import l2
-from tensorflow.keras import backend as K
 from tensorflow.keras.callbacks import LearningRateScheduler, LambdaCallback
+import tensorflow as tf
+import tensorflow.keras.initializers as initializers
 from datetime import datetime
 from pathlib import Path
 import numpy as np
@@ -20,15 +21,13 @@ from montecarlo import MonteCarloBrain
 from network_common import judge_stats, train_network, self_play, train_cycle, train_cycle_dualmodel,evaluate_model
 from network_brain import predict,DualModelNetworkBrain,NetworkBrain
 from parameter import PARAM
-from self_play import write_data, load_data_file_name
+from self_play import self_play_dualmodel, self_play
+from selfplay_brain import SelfplayRandomBrain
 from google_colab_helper import google_drive_path
 
 DN_FILTERS = 128
 DN_RESIDUAL_NUM = 16
 
-#MODEL_FILE_BEST = './model/gomoku/best.keras'
-#MODEL_FILE_LATEST = './model/gomoku/latest.keras'
-#HISTORY_FOLDER = './data/gomoku'
 def get_history_folder(board_size : int = 15)->str:
     return './data/gomoku_{0}'.format(board_size)
 
@@ -62,7 +61,7 @@ def get_history_folder_second_gcolab(board_size: int=15)->str:
 
 
 def conv(filters):
-    return Conv2D(filters, 5, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))
+    return Conv2D(filters, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))
 
 def residual_block():
     def f(x):
@@ -77,9 +76,9 @@ def residual_block():
         return x
     return f
 
-def dual_network(file_best :str, board_size :int, show_summary:bool = False):
+def dual_network(file_best :str, board_size :int, show_summary:bool = False)->bool:
     if os.path.exists(file_best):
-        return
+        return False
     parent = os.path.dirname(file_best)
     os.makedirs(parent, exist_ok=True)
     
@@ -108,13 +107,12 @@ def dual_network(file_best :str, board_size :int, show_summary:bool = False):
     model = Model(inputs=input, outputs=[p,v])
     if show_summary:
         model.summary()
-    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
+    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
     model.save(file_best)
 
-    K.clear_session()
     del model
-
-
+    tf.keras.backend.clear_session()
+    return True
 
 
 def train_cycle_gomoku(
@@ -148,11 +146,13 @@ def train_cycle_dualmodel_gomoku(
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache: bool = True):            
+                ,use_cache: bool = True
+                ,initial_selfplay_repeat: int = 1000
+                ,initial_train_count: int = 500):
     first_best_file = get_model_file_best_first(board_size)
     second_best_file = get_model_file_best_second(board_size)
-    dual_network(first_best_file,board_size)
-    dual_network(second_best_file,board_size)
+    new_model = dual_network(first_best_file,board_size) or dual_network(second_best_file,board_size)
+
     train_cycle_dualmodel(
         game_board= GomokuBoard(board_size=board_size),
         brain_evaluate_count=brain_evaluate_count,
@@ -165,8 +165,10 @@ def train_cycle_dualmodel_gomoku(
         cycle_count=cycle_count,
         eval_count=eval_count ,
         eval_judge=eval_judge,
-        use_cache=use_cache)
-
+        use_cache=use_cache,
+        new_model=new_model,
+        initial_selfplay_repeat=initial_selfplay_repeat,
+        initial_train_count=initial_train_count)
 
 def train_cycle_gomoku_gcolab(
                 board_size : int = 15

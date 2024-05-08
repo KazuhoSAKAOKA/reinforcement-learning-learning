@@ -14,11 +14,21 @@ def predict_core(model : Model, board : GameBoard)->Tuple[np.ndarray, float]:
     # 推論
     y = model.predict(x, batch_size=1, verbose=0)
 
+    with open('DEBUG_OUT.txt', 'a' ) as f:
+        f.write("======= PREDICT ========\n")
+        f.write('board={}\n'.format(board))
+        f.write('p,v={}\n'.format(y))
+        f.write('ptype={}\n'.format(y[0].dtype))
+        f.write('vtype={}\n'.format(y[1].dtype))
+
     # 方策の取得
-    policies = y[0][0][:]
-    policies /= sum(policies) if sum(policies) else 1 # 合計1の確率分布に変換
-    # 価値の取得
-    value = y[1][0][0]
+        policies = y[0][0][:]
+        policies /= np.sum(policies) if np.sum(policies) else 1 # 合計1の確率分布に変換
+        f.write('policies={}\n'.format(policies.dtype))
+
+
+        # 価値の取得
+        value = y[1][0][0]
     return policies, value
 
 # 推論

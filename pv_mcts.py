@@ -30,20 +30,22 @@ class Node:
     # ノードの初期化
     def __init__(self
                     , board : GameBoard
-                    , policy : int
+                    , policy : float
                     , predict_alpha: Callable[[GameBoard], Tuple[np.ndarray, float]]
                     , predict_beta: Callable[[GameBoard], Tuple[np.ndarray, float]]
                     , is_root : bool = False):
         self.board = board # 状態
-        self.policy = policy # 方策
-        self.w = 0 # 累計価値
-        self.n = 0 # 試行回数
+        self.policy :float= policy # 方策
+        self.w :float= 0.0 # 累計価値
+        self.n :int = 0 # 試行回数
         self.child_nodes = None  # 子ノード群
         self.predict_alpha = predict_alpha
         self.predict_beta = predict_beta
         self.is_root = is_root
     def __repr__(self) -> str:
         return 'Node(policy:{0},w:{1},n:{2})'.format(self.policy, self.w, self.n)
+    def get_detail(self)->str:
+        return 'Node(policy:{0},w:{1},n:{2} {3},{4},{5})'.format(self.policy, self.w, self.n, type(self.policy), type(self.w), type(self.n))
     # 局面の価値の計算
     def evaluate(self):
         # ゲーム終了時
@@ -78,6 +80,7 @@ class Node:
                 print("=== MCTS ===")
                 print(self.board)
                 print("policy:{0}, v={1}".format(policies, value))
+                print("policy type={}".format(policies.dtype))
                 print("============")
                 print()
             
@@ -123,6 +126,7 @@ class Node:
             u_value = cs * child_policy * sqrt(t) / (1 + child_node.n)
             arc_value = q_value + u_value
             pucb_values.append(arc_value)
+
         # アーク評価値が最大の子ノードを返す
         max_pucb_index = np.argmax(pucb_values)
         return self.child_nodes[max_pucb_index]
@@ -178,18 +182,37 @@ def pv_mcts_policies_boltzman(board : GameBoard
                             , predict_beta:Callable[[GameBoard], Tuple[np.ndarray, float]]):
     root_node = pv_mcts_core(board=board, evaluate_count=evaluate_count, predict_alpha=predict_alpha, predict_beta=predict_beta)
     scores = nodes_to_scores(root_node.child_nodes)
-    div = sum(scores) if sum(scores) else 1
-    scores = np.array([x / div for x in scores])
-    scores = boltzman(scores, PARAM.temperature)
 
-    # 行動空間に対する確率分布の取得　行動できないアクションは0
-    ratio = np.zeros(board.get_output_size(), dtype=np.float32)
-    total = sum(scores)
-    if total > 0:
-        for s, c in zip(scores, root_node.child_nodes):
-            ratio[c.board.get_last_action()] = s / total
-    else:
-        legal_actions = board.get_legal_actions()
-        for action in legal_actions:
-            ratio[action] = 1.0 / len(legal_actions)
+    with open('DEBUG_OUT.txt', 'a' ) as f:
+        f.write("======= scores ========\n")
+        for node in root_node.child_nodes:
+            f.write('node{}\n'.format(node.get_detail()))
+
+        f.write('board={}\n'.format(board))
+        f.write('score={}\n'.format(scores))
+
+        div = sum(scores) if sum(scores) else 1
+        scores = np.array([x / div for x in scores])
+
+        f.write('avereged,score={}\n'.format(scores))
+
+        scores = boltzman(scores, PARAM.temperature)
+
+        f.write('bolzman,score={}\n'.format(scores))
+
+
+        # 行動空間に対する確率分布の取得　行動できないアクションは0
+        ratio = np.zeros(board.get_output_size(), dtype=np.float32)
+        total = sum(scores)
+        if total > 0:
+            for s, c in zip(scores, root_node.child_nodes):
+                ratio[c.board.get_last_action()] = s / total
+        else:
+            legal_actions = board.get_legal_actions()
+            for action in legal_actions:
+                ratio[action] = 1.0 / len(legal_actions)
+
+        f.write('ratio,ratio={}\n'.format(ratio))
+
     return ratio
+

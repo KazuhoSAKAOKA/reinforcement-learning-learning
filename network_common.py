@@ -20,9 +20,12 @@ from montecarlo import MonteCarloBrain
 from typing import Callable
 from parameter import PARAM
 from typing import Tuple
-from selfplay_brain import SelfplayBrain
+from selfplay_brain import SelfplayRandomBrain
 from network_brain import NetworkBrain, SelfplayBrain, SelfplayNetworkBrain, SelfplayDualModelNetworkBrain, DualModelNetworkBrain
 from threadsafe_dict import ThreadSafeDict
+
+
+
 
 def train_network(load_model_path, history_file, game_board : GameBoard, epoch_count : int)->Tuple[Model, str]:
 
@@ -132,6 +135,38 @@ def train_cycle(
         del latest_model
         tf.keras.backend.clear_session()
 
+def initial_train_model(game_board: GameBoard,
+                        first_best_model_file: str,
+                        second_best_model_file: str,
+                        history_first_folder: str,
+                        history_second_folder: str,
+                        initial_selfplay_repeat: int,
+                        initial_train_count: int,
+                        executor: concurrent.futures.ThreadPoolExecutor):
+    print('initial selfplay and train')
+
+    first,second = self_play_dualmodel(
+        first_brain=SelfplayRandomBrain(),
+        second_brain= SelfplayRandomBrain(),
+        board=game_board,
+        repeat_count=initial_selfplay_repeat,
+        history_folder_first=history_first_folder,
+        history_folder_second=history_second_folder)    
+    print('initial selfplay completed. begin train')
+    future_first = executor.submit(lambda: train_network(first_best_model_file, first, game_board, initial_train_count))
+    future_second = executor.submit(lambda: train_network(second_best_model_file, second, game_board, initial_train_count))
+    latest_first_model, latest_file_name_first = future_first.result()
+    latest_second_model, latest_file_name_second = future_second.result()
+
+    print('initial training complete. first model file={0}, second model file={1}'.format(latest_file_name_first, latest_file_name_second))
+    os.remove(first_best_model_file)
+    shutil.copy(latest_file_name_first, first_best_model_file)
+    os.remove(second_best_model_file)
+    shutil.copy(latest_file_name_second, second_best_model_file)
+    del latest_first_model
+    del latest_second_model
+    tf.keras.backend.clear_session()
+
 def train_cycle_dualmodel(game_board : GameBoard
                 ,brain_evaluate_count : int
                 ,first_best_model_file : str
@@ -142,14 +177,29 @@ def train_cycle_dualmodel(game_board : GameBoard
                 ,epoch_count : int = 200
                 ,cycle_count : int = 10
                 ,eval_count: int = 20
-                ,eval_temperature:float = 1.0
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = True):
+                ,use_cache = True
+                ,new_model: bool = False
+                ,initial_selfplay_repeat: int = 1000
+                ,initial_train_count: int = 500):
+    print('train_cycle_dualmodel')
     executor = concurrent.futures.ThreadPoolExecutor(2)
+
+    if new_model and initial_selfplay_repeat > 0 and initial_train_count > 0:
+        initial_train_model(
+            game_board=game_board,
+            first_best_model_file= first_best_model_file,
+            second_best_model_file= second_best_model_file,
+            history_first_folder= history_first_folder,
+            history_second_folder= history_second_folder,
+            initial_selfplay_repeat= initial_selfplay_repeat,
+            initial_train_count= initial_train_count,
+            executor= executor)
+
     if use_cache:
         ts_dict = ThreadSafeDict()
     else:
-        ts_dict = None    
+        ts_dict = None
     for i in range(cycle_count):
         print('cycle {}/{}'.format(i + 1, cycle_count))
         if use_cache:
