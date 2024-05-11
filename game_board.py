@@ -31,6 +31,9 @@ class GameBoard:
     def reset(self):
         self.turn = 0
         self.last_action = -1
+    def is_ignore_state(self)->bool:
+        return True
+
     @abstractmethod
     # 行動空間サイズ
     def get_output_size(self)->int:

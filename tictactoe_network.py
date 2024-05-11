@@ -19,7 +19,7 @@ from brains import RandomBrain, ConsoleDebugBrain
 from mini_max import AlphaBetaBrain
 from montecarlo import MonteCarloBrain
 from network_common import judge_stats, train_network, train_cycle, train_cycle_dualmodel, evaluate_model
-from network_brain import predict,DualModelNetworkBrain,NetworkBrain
+from network_brain import predict,NetworkBrain,NetworkBrainFactory
 from parameter import PARAM
 from self_play import write_data, load_data, load_data_file, load_data_file_name
 from google_colab_helper import google_drive_path
@@ -150,22 +150,6 @@ def convert(xs):
     xs = xs.reshape(len(xs), c, a, b).transpose(0, 2, 3, 1)
 
     return xs
-
-
-def train():
-    dual_network()
-    train_cycle(MODEL_FILE_BEST, HISTORY_FOLDER, TicTacToeBoard(), cycle_count=4, eval_count=10)
-
-    board = TicTacToeBoard()
-    player = Agent(ConsoleDebugBrain())
-    model = load_model(MODEL_FILE_BEST)
-    network_agent = Agent(NetworkBrain(0.0, 200, lambda x: predict(model, x), lambda x: predict(model, x)))
-    env = GameEnv(board, player, network_agent)
-    r = env.play()
-    print(r)
-    # モデルの破棄
-    K.clear_session()
-    del model
 
 
 

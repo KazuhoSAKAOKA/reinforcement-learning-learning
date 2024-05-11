@@ -20,8 +20,8 @@ from montecarlo import MonteCarloBrain
 from typing import Callable
 from parameter import PARAM
 from typing import Tuple
-from selfplay_brain import SelfplayRandomBrain
-from network_brain import NetworkBrain, SelfplayBrain, SelfplayNetworkBrain, SelfplayDualModelNetworkBrain, DualModelNetworkBrain
+from selfplay_brain import SelfplayRandomBrain, HistoryUpdater
+from network_brain import NetworkBrain, SelfplayNetworkBrain, NetworkBrainFactory
 from threadsafe_dict import ThreadSafeDict
 
 
@@ -135,19 +135,20 @@ def train_cycle(
         del latest_model
         tf.keras.backend.clear_session()
 
-def initial_train_model(game_board: GameBoard,
+def initial_train_dual_model(game_board: GameBoard,
                         first_best_model_file: str,
                         second_best_model_file: str,
                         history_first_folder: str,
                         history_second_folder: str,
                         initial_selfplay_repeat: int,
                         initial_train_count: int,
-                        executor: concurrent.futures.ThreadPoolExecutor):
+                        executor: concurrent.futures.ThreadPoolExecutor,
+                        history_updater: HistoryUpdater):
     print('initial selfplay and train')
 
     first,second = self_play_dualmodel(
-        first_brain=SelfplayRandomBrain(),
-        second_brain= SelfplayRandomBrain(),
+        first_brain=SelfplayRandomBrain(history_updater=history_updater),
+        second_brain= SelfplayRandomBrain(history_updater=history_updater),
         board=game_board,
         repeat_count=initial_selfplay_repeat,
         history_folder_first=history_first_folder,
@@ -181,12 +182,13 @@ def train_cycle_dualmodel(game_board : GameBoard
                 ,use_cache = True
                 ,new_model: bool = False
                 ,initial_selfplay_repeat: int = 1000
-                ,initial_train_count: int = 500):
+                ,initial_train_count: int = 500
+                ,history_updater: HistoryUpdater=HistoryUpdater()):
     print('train_cycle_dualmodel')
     executor = concurrent.futures.ThreadPoolExecutor(2)
 
     if new_model and initial_selfplay_repeat > 0 and initial_train_count > 0:
-        initial_train_model(
+        initial_train_dual_model(
             game_board=game_board,
             first_best_model_file= first_best_model_file,
             second_best_model_file= second_best_model_file,
@@ -194,7 +196,8 @@ def train_cycle_dualmodel(game_board : GameBoard
             history_second_folder= history_second_folder,
             initial_selfplay_repeat= initial_selfplay_repeat,
             initial_train_count= initial_train_count,
-            executor= executor)
+            executor= executor,
+            history_updater=history_updater)
 
     if use_cache:
         ts_dict = ThreadSafeDict()
@@ -206,8 +209,8 @@ def train_cycle_dualmodel(game_board : GameBoard
             ts_dict.clear()
         first_model = tf.keras.models.load_model(first_best_model_file)
         second_model = tf.keras.models.load_model(second_best_model_file)
-        first_brain = SelfplayDualModelNetworkBrain(brain_evaluate_count, first_model, second_model, ts_dict)
-        second_brain = SelfplayDualModelNetworkBrain(brain_evaluate_count, first_model, second_model, ts_dict)
+        first_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, frist_model=first_model, second_model=second_model, ts_dist=ts_dict, history_updater=history_updater)
+        second_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, frist_model=first_model, second_model=second_model, ts_dist=ts_dict, history_updater=history_updater)
         first_history_file, second_history_fine = self_play_dualmodel(first_brain, second_brain,game_board, selfplay_repeat, history_first_folder, history_second_folder)
         
         future_first = executor.submit(lambda: train_network(first_best_model_file, first_history_file, game_board, epoch_count))
@@ -223,8 +226,8 @@ def train_cycle_dualmodel(game_board : GameBoard
                 latest_dict = ThreadSafeDict()
             else:
                 latest_dict = None            
-            latest_brain = DualModelNetworkBrain(brain_evaluate_count, latest_first_model, latest_second_model, latest_dict)
-            best_brain = DualModelNetworkBrain(brain_evaluate_count, first_model, second_model, ts_dict)
+            latest_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, frist_model=latest_first_model, second_model=latest_second_model, ts_dist=ts_dict) 
+            best_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, frist_model=first_model, second_model=second_model, ts_dist=ts_dict) 
             stats = evaluate_model(agent_target=Agent(brain=latest_brain, name='latest'), agent_base=Agent(brain=best_brain, name='best'), board=game_board,play_count=eval_count, executor=executor)
             replace = eval_judge(stats)
         if replace:

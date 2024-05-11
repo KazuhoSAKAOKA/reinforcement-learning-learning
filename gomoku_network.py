@@ -19,7 +19,7 @@ from brains import RandomBrain, ConsoleDebugBrain
 from mini_max import AlphaBetaBrain
 from montecarlo import MonteCarloBrain
 from network_common import judge_stats, train_network, self_play, train_cycle, train_cycle_dualmodel,evaluate_model
-from network_brain import predict,DualModelNetworkBrain,NetworkBrain
+from network_brain import predict,NetworkBrain
 from parameter import PARAM
 from self_play import self_play_dualmodel, self_play
 from selfplay_brain import SelfplayRandomBrain
@@ -218,5 +218,4 @@ def train_cycle_dualmodel_gomoku_gcolab(
         eval_count=eval_count ,
         eval_judge=eval_judge,
         use_cache=use_cache)
-
 

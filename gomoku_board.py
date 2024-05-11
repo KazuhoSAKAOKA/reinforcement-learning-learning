@@ -49,6 +49,10 @@ class GomokuBoard(StoneGameBoard):
     def __init__(self, board_size = 15, turn = 0, last_action = None):
         super().__init__(board_size, turn, last_action)
 
+    def is_ignore_state(self) -> bool:
+        # ゲーム開始時は中央にしか打てないため、無視する
+        return self.turn == 0
+
     def to_hisotry_record(self):
         return np.array([self.self_cells, self.enemy_cells])
 

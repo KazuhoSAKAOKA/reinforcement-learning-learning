@@ -109,12 +109,20 @@ class Node:
 
     # アーク評価値が最大の子ノードを取得
     def next_child_node(self):
+        if self.is_root and PARAM.alpha > 0:
+            noises = np.random.dirichlet([PARAM.alpha] * len(self.child_nodes))
+
+        # 展開していない場合はポリシーをそのまま使用
+        if self.n == 0:
+            policies = [c.policy for c in self.child_nodes]
+            if self.is_root and PARAM.alpha > 0:
+                policies = [(1 - PARAM.epsilon) * p + PARAM.epsilon * noises[i] for i, p in enumerate(policies)]
+            return self.child_nodes[np.argmax(policies)]
+        
         # アーク評価値の計算
         t = sum(nodes_to_scores(self.child_nodes))
         pucb_values = []
 
-        if self.is_root and PARAM.alpha > 0:
-            noises = np.random.dirichlet([PARAM.alpha] * len(self.child_nodes))
 
         for i, child_node in enumerate(self.child_nodes):
             q_value = (-child_node.w / child_node.n if child_node.n else 0.0)
@@ -155,7 +163,15 @@ def pv_mcts_scores(board : GameBoard
                    , predict_alpha :Callable[[GameBoard], Tuple[np.ndarray, float]]
                    , predict_beta:Callable[[GameBoard], Tuple[np.ndarray, float]]):
     root_node = pv_mcts_core(board=board, evaluate_count=evaluate_count, predict_alpha=predict_alpha, predict_beta=predict_beta)
-    scores = nodes_to_scores(root_node.child_nodes)    
+    scores = nodes_to_scores(root_node.child_nodes)
+
+    with open('DEBUG_OUT.txt', 'a' ) as f:
+        f.write("======= scores ========\n")
+        for i, node in enumerate(root_node.child_nodes):
+            f.write('{}:node{}\n'.format(i, node.get_detail()))
+        f.write('board={}\n'.format(board))
+        f.write('score={}\n'.format(scores))
+
     return scores
 
 def pv_mcts_policies(board : GameBoard
@@ -165,17 +181,24 @@ def pv_mcts_policies(board : GameBoard
     root_node = pv_mcts_core(board=board, evaluate_count=evaluate_count, predict_alpha=predict_alpha, predict_beta=predict_beta)
     scores = nodes_to_scores(root_node.child_nodes)    
     # 行動空間に対する確率分布の取得　行動できないアクションは0
-    ratio = np.zeros(board.get_output_size(), dtype=np.float32)
+    policies = np.zeros(board.get_output_size(), dtype=np.float32)
     total = sum(scores)
     if total > 0:
         for s, c in zip(scores, root_node.child_nodes):
-            ratio[c.board.get_last_action()] = s / total
+            policies[c.board.get_last_action()] = s / total
     else:
         legal_actions = board.get_legal_actions()
         for action in legal_actions:
-            ratio[action] = 1.0 / len(legal_actions)
-    return ratio
+            policies[action] = 1.0 / len(legal_actions)
 
+    with open('DEBUG_OUT.txt', 'a' ) as f:
+        f.write('policies={}\n'.format(policies))
+
+    return policies
+
+
+
+'''
 def pv_mcts_policies_boltzman(board : GameBoard
                             , evaluate_count : int
                             , predict_alpha :Callable[[GameBoard], Tuple[np.ndarray, float]]
@@ -215,4 +238,4 @@ def pv_mcts_policies_boltzman(board : GameBoard
         f.write('ratio,ratio={}\n'.format(ratio))
 
     return ratio
-
+'''
