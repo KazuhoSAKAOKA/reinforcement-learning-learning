@@ -165,13 +165,6 @@ def pv_mcts_scores(board : GameBoard
     root_node = pv_mcts_core(board=board, evaluate_count=evaluate_count, predict_alpha=predict_alpha, predict_beta=predict_beta)
     scores = nodes_to_scores(root_node.child_nodes)
 
-    with open('DEBUG_OUT.txt', 'a' ) as f:
-        f.write("======= scores ========\n")
-        for i, node in enumerate(root_node.child_nodes):
-            f.write('{}:node{}\n'.format(i, node.get_detail()))
-        f.write('board={}\n'.format(board))
-        f.write('score={}\n'.format(scores))
-
     return scores
 
 def pv_mcts_policies(board : GameBoard
@@ -179,6 +172,8 @@ def pv_mcts_policies(board : GameBoard
                    , predict_alpha :Callable[[GameBoard], Tuple[np.ndarray, float]]
                    , predict_beta:Callable[[GameBoard], Tuple[np.ndarray, float]])->np.ndarray:
     root_node = pv_mcts_core(board=board, evaluate_count=evaluate_count, predict_alpha=predict_alpha, predict_beta=predict_beta)
+
+
     scores = nodes_to_scores(root_node.child_nodes)    
     # 行動空間に対する確率分布の取得　行動できないアクションは0
     policies = np.zeros(board.get_output_size(), dtype=np.float32)
@@ -190,9 +185,6 @@ def pv_mcts_policies(board : GameBoard
         legal_actions = board.get_legal_actions()
         for action in legal_actions:
             policies[action] = 1.0 / len(legal_actions)
-
-    with open('DEBUG_OUT.txt', 'a' ) as f:
-        f.write('policies={}\n'.format(policies))
 
     return policies
 

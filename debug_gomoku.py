@@ -78,10 +78,7 @@ def debug_init_train(board_size:int = 11,
 def debug_selfplay(board_size:int = 11, 
                     first_best_model_file = './test1_model.keras',
                     second_best_model_file = './test2_model.keras'):
-    #if os.path.exists(first_best_model_file):
-    #    os.remove(first_best_model_file)
-    #if os.path.exists(second_best_model_file):
-    #    os.remove(second_best_model_file)
+
     history_updater = ZeroToOneHistoryUpdater()
     debug_file = '.DEBUG_OUT.txt'
     if os.path.exists(debug_file):
@@ -93,15 +90,18 @@ def debug_selfplay(board_size:int = 11,
 
     first_model = tf.keras.models.load_model(first_best_model_file)
     second_model = tf.keras.models.load_model(second_best_model_file)
-    first_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
-    second_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
+    first_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
+    second_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
     first_history_file, second_history_fine = self_play_dualmodel(first_brain, second_brain,GomokuBoard(board_size=board_size), 2, get_history_folder_first(board_size), get_history_folder_second(board_size))   
 
-first_best_model_file = './test1_model.keras'
-second_best_model_file = './test2_model.keras'
-
-debug_init_train(11,first_best_model_file,second_best_model_file)
-debug_selfplay(11,first_best_model_file,second_best_model_file)
+#first_best_model_file = './test1_model.keras'
+#second_best_model_file = './test2_model.keras'
+    #if os.path.exists(first_best_model_file):
+    #    os.remove(first_best_model_file)
+    #if os.path.exists(second_best_model_file):
+    #    os.remove(second_best_model_file)
+#debug_init_train(11,first_best_model_file,second_best_model_file)
+#debug_selfplay(11,first_best_model_file,second_best_model_file)
 
 #validate_network()
  
@@ -109,5 +109,5 @@ debug_selfplay(11,first_best_model_file,second_best_model_file)
 
 #train_cycle_gomoku(board_size=9, brain_evaluate_count=5, selfplay_repeat=10, epoch_count=1, cycle_count=1, eval_count=1, use_cache=True)
 
-#train_cycle_dualmodel_gomoku(board_size=11, brain_evaluate_count=100, selfplay_repeat=100, epoch_count=50, cycle_count=20, eval_count=10, use_cache=True)
+train_cycle_dualmodel_gomoku(board_size=11, brain_evaluate_count=300, selfplay_repeat=100, epoch_count=100, cycle_count=10, eval_count=10, use_cache=True, initial_train_count=100, initial_selfplay_repeat=100, history_updater=ZeroToOneHistoryUpdater())
 #train_cycle_dualmodel_gomoku(board_size=11, brain_evaluate_count=100, selfplay_repeat=2, epoch_count=1, cycle_count=1, eval_count=0, use_cache=True)

@@ -209,8 +209,8 @@ def train_cycle_dualmodel(game_board : GameBoard
             ts_dict.clear()
         first_model = tf.keras.models.load_model(first_best_model_file)
         second_model = tf.keras.models.load_model(second_best_model_file)
-        first_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, frist_model=first_model, second_model=second_model, ts_dist=ts_dict, history_updater=history_updater)
-        second_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, frist_model=first_model, second_model=second_model, ts_dist=ts_dict, history_updater=history_updater)
+        first_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
+        second_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
         first_history_file, second_history_fine = self_play_dualmodel(first_brain, second_brain,game_board, selfplay_repeat, history_first_folder, history_second_folder)
         
         future_first = executor.submit(lambda: train_network(first_best_model_file, first_history_file, game_board, epoch_count))
@@ -226,8 +226,8 @@ def train_cycle_dualmodel(game_board : GameBoard
                 latest_dict = ThreadSafeDict()
             else:
                 latest_dict = None            
-            latest_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, frist_model=latest_first_model, second_model=latest_second_model, ts_dist=ts_dict) 
-            best_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, frist_model=first_model, second_model=second_model, ts_dist=ts_dict) 
+            latest_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=latest_first_model, second_model=latest_second_model, ts_dict=ts_dict) 
+            best_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict) 
             stats = evaluate_model(agent_target=Agent(brain=latest_brain, name='latest'), agent_base=Agent(brain=best_brain, name='best'), board=game_board,play_count=eval_count, executor=executor)
             replace = eval_judge(stats)
         if replace:

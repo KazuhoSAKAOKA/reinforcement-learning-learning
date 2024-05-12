@@ -20,6 +20,7 @@ from mini_max import AlphaBetaBrain
 from montecarlo import MonteCarloBrain
 from network_common import judge_stats, train_network, self_play, train_cycle, train_cycle_dualmodel,evaluate_model
 from network_brain import predict,NetworkBrain
+from selfplay_brain import HistoryUpdater, ZeroToOneHistoryUpdater
 from parameter import PARAM
 from self_play import self_play_dualmodel, self_play
 from selfplay_brain import SelfplayRandomBrain
@@ -148,10 +149,13 @@ def train_cycle_dualmodel_gomoku(
                 ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
                 ,use_cache: bool = True
                 ,initial_selfplay_repeat: int = 1000
-                ,initial_train_count: int = 500):
+                ,initial_train_count: int = 500
+                ,history_updater: HistoryUpdater = ZeroToOneHistoryUpdater()):
     first_best_file = get_model_file_best_first(board_size)
     second_best_file = get_model_file_best_second(board_size)
-    new_model = dual_network(first_best_file,board_size) or dual_network(second_best_file,board_size)
+    exist_first = dual_network(first_best_file,board_size)
+    exist_second = dual_network(second_best_file,board_size)
+    new_model = exist_first or exist_second
 
     train_cycle_dualmodel(
         game_board= GomokuBoard(board_size=board_size),
@@ -168,7 +172,8 @@ def train_cycle_dualmodel_gomoku(
         use_cache=use_cache,
         new_model=new_model,
         initial_selfplay_repeat=initial_selfplay_repeat,
-        initial_train_count=initial_train_count)
+        initial_train_count=initial_train_count,
+        history_updater=history_updater)
 
 def train_cycle_gomoku_gcolab(
                 board_size : int = 15
