@@ -109,5 +109,11 @@ def debug_selfplay(board_size:int = 11,
 
 #train_cycle_gomoku(board_size=9, brain_evaluate_count=5, selfplay_repeat=10, epoch_count=1, cycle_count=1, eval_count=1, use_cache=True)
 
-train_cycle_dualmodel_gomoku(board_size=11, brain_evaluate_count=300, selfplay_repeat=100, epoch_count=100, cycle_count=10, eval_count=10, use_cache=True, initial_train_count=100, initial_selfplay_repeat=100, history_updater=ZeroToOneHistoryUpdater())
+#train_cycle_dualmodel_gomoku(board_size=15, brain_evaluate_count=500, selfplay_repeat=100, epoch_count=100, cycle_count=4, eval_count=10, use_cache=True, initial_train_count=500, initial_selfplay_repeat=1000, history_updater=ZeroToOneHistoryUpdater())
 #train_cycle_dualmodel_gomoku(board_size=11, brain_evaluate_count=100, selfplay_repeat=2, epoch_count=1, cycle_count=1, eval_count=0, use_cache=True)
+
+
+
+#train_cycle_gomoku(board_size=9, brain_evaluate_count=20, selfplay_repeat=2, epoch_count=2, cycle_count=2, eval_count=1, use_cache=True, initial_train_count=10, initial_selfplay_repeat=10, history_updater=ZeroToOneHistoryUpdater())
+
+train_cycle_dualmodel_gomoku(board_size=9, brain_evaluate_count=20, selfplay_repeat=2, epoch_count=2, cycle_count=2, eval_count=1, use_cache=True, initial_train_count=10, initial_selfplay_repeat=10, history_updater=ZeroToOneHistoryUpdater())

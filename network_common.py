@@ -84,18 +84,56 @@ def judge_stats(stats: Tuple[GameStats, GameStats])->bool:
         return True
     return False
 
+def initial_train(
+            game_board: GameBoard,
+            best_model_file: str,
+            history_folder: str,
+            initial_selfplay_repeat: int,
+            initial_train_count: int,
+            history_updater: HistoryUpdater):
+    print('initial selfplay and train')
+
+    history_file = self_play(
+        first_brain=SelfplayRandomBrain(history_updater=history_updater),
+        second_brain= SelfplayRandomBrain(history_updater=history_updater),
+        board=game_board,
+        repeat_count=initial_selfplay_repeat,
+        history_folder=history_folder)
+    print('initial selfplay completed. begin train')
+    model, latest_file_name = train_network(best_model_file, history_file, game_board, initial_train_count)
+
+    print('initial training complete. model file={}'.format(latest_file_name))
+    os.remove(best_model_file)
+    shutil.copy(latest_file_name, best_model_file)
+    del model
+    tf.keras.backend.clear_session()
+
 
 def train_cycle(
-                game_board : GameBoard
-                ,best_model_file : str
-                ,history_folder : str
-                ,brain_evaluate_count : int = 100
-                ,selfplay_repeat : int = 500
-                ,epoch_count : int = 200
-                ,cycle_count : int = 10
-                ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = True):
+                game_board : GameBoard,
+                best_model_file : str,
+                history_folder : str,
+                brain_evaluate_count : int = 100,
+                selfplay_repeat : int = 500,
+                epoch_count : int = 200,
+                cycle_count : int = 10,
+                eval_count: int = 20,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats,
+                use_cache = True,
+                new_model: bool = False,
+                initial_selfplay_repeat: int = 1000,
+                initial_train_count: int = 500,
+                history_updater: HistoryUpdater=HistoryUpdater(),
+                is_continue :bool = False,
+                start_index:int = 0):
+
+    if new_model and initial_selfplay_repeat > 0 and initial_train_count > 0:
+        initial_train(
+            game_board=game_board,
+            best_model_file= best_model_file,
+            history_folder= history_folder,
+            initial_selfplay_repeat= initial_selfplay_repeat,
+            initial_train_count= initial_train_count,
+            history_updater=history_updater)
     if eval_count > 0:
         executor = concurrent.futures.ThreadPoolExecutor(2)
     else:
@@ -111,9 +149,21 @@ def train_cycle(
         if use_cache:
             ts_dict.clear()
         best_model = tf.keras.models.load_model(best_model_file)
-        first_brain = SelfplayNetworkBrain(evaluate_count=brain_evaluate_count, model=best_model, ts_dict=ts_dict)
-        second_brain = SelfplayNetworkBrain(evaluate_count=brain_evaluate_count, model=best_model, ts_dict=ts_dict)
-        history_file = self_play(first_brain, second_brain, game_board, selfplay_repeat, history_folder)
+        #first_brain = SelfplayNetworkBrain(evaluate_count=brain_evaluate_count, model=best_model, ts_dict=ts_dict)
+        #second_brain = SelfplayNetworkBrain(evaluate_count=brain_evaluate_count, model=best_model, ts_dict=ts_dict)
+        first_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=best_model, second_model=best_model, ts_dict=ts_dict, history_updater=history_updater)
+        second_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=best_model, second_model=best_model, ts_dict=ts_dict, history_updater=history_updater)
+
+        history_file = self_play(
+            first_brain=first_brain,
+            second_brain= second_brain,
+            game_board= game_board,
+            repeat_count= selfplay_repeat,
+            history_folder= history_folder,
+            is_continue=is_continue,
+            start_index=start_index)
+        is_continue = False
+        start_index = 0
         latest_model, latest_file_name = train_network(best_model_file, history_file, game_board, epoch_count)
 
         print('training latest model file={0}'.format(latest_file_name))
@@ -123,8 +173,9 @@ def train_cycle(
                 latest_dict = ThreadSafeDict()
             else:
                 latest_dict = None
-            latest_brain = NetworkBrain(brain_evaluate_count, latest_model, latest_dict)
-            best_brain = NetworkBrain(brain_evaluate_count, best_model, ts_dict)
+            
+            latest_brain = NetworkBrainFactory.create_network_brain(evaluate_count=brain_evaluate_count, model=latest_model, ts_dict=latest_dict)
+            best_brain = NetworkBrainFactory.create_network_brain(evaluate_count=brain_evaluate_count, model=best_model, ts_dict=ts_dict)
             stats = evaluate_model(agent_target=Agent(brain=latest_brain, name='latest'), agent_base=Agent(brain=best_brain, name='best'), board=game_board,play_count=eval_count, executor=executor)
             replace = eval_judge(stats)
         if replace:
@@ -168,22 +219,25 @@ def initial_train_dual_model(game_board: GameBoard,
     del latest_second_model
     tf.keras.backend.clear_session()
 
-def train_cycle_dualmodel(game_board : GameBoard
-                ,brain_evaluate_count : int
-                ,first_best_model_file : str
-                ,second_best_model_file : str
-                ,history_first_folder : str
-                ,history_second_folder : str
-                ,selfplay_repeat : int = 500
-                ,epoch_count : int = 200
-                ,cycle_count : int = 10
-                ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = True
-                ,new_model: bool = False
-                ,initial_selfplay_repeat: int = 1000
-                ,initial_train_count: int = 500
-                ,history_updater: HistoryUpdater=HistoryUpdater()):
+def train_cycle_dualmodel(
+                game_board : GameBoard,
+                brain_evaluate_count : int,
+                first_best_model_file : str,
+                second_best_model_file : str,
+                history_first_folder : str,
+                history_second_folder : str,
+                selfplay_repeat : int = 500,
+                epoch_count : int = 200,
+                cycle_count : int = 10,
+                eval_count: int = 20,
+                eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats,
+                use_cache = True,
+                new_model: bool = False,
+                initial_selfplay_repeat: int = 1000,
+                initial_train_count: int = 500,
+                history_updater: HistoryUpdater=HistoryUpdater(),
+                is_continue :bool = False,
+                start_index:int = 0):
     print('train_cycle_dualmodel')
     executor = concurrent.futures.ThreadPoolExecutor(2)
 
@@ -226,7 +280,7 @@ def train_cycle_dualmodel(game_board : GameBoard
                 latest_dict = ThreadSafeDict()
             else:
                 latest_dict = None            
-            latest_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=latest_first_model, second_model=latest_second_model, ts_dict=ts_dict) 
+            latest_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=latest_first_model, second_model=latest_second_model, ts_dict=latest_dict) 
             best_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict) 
             stats = evaluate_model(agent_target=Agent(brain=latest_brain, name='latest'), agent_base=Agent(brain=best_brain, name='best'), board=game_board,play_count=eval_count, executor=executor)
             replace = eval_judge(stats)
