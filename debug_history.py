@@ -38,9 +38,9 @@ def history_save(board: StoneGameBoard, history_file: str, save_file: str):
 
 
 if __name__ == '__main__':
-    board = GomokuBoard(11)
+    board = GomokuBoard(9)
     #history_save(GomokuBoard(11), './data/gomoku_11/first/20240511082326.history', 'first_history.txt')
     #history_save(GomokuBoard(11), './data/gomoku_11/second/20240511082326.history', 'second_history.txt')
 
-    history_save(board, '/home/kazuho/python/reinforcement-learning-learning/data/gomoku_11/first/20240511140353.history', 'first_history.txt')
-    history_save(board, '/home/kazuho/python/reinforcement-learning-learning/data/gomoku_11/second/20240511140353.history', 'second_history.txt')
+    history_save(board, './data/gomoku_9/first20240514081220.history', 'first_history.txt')
+    history_save(board, './data/gomoku_9/second20240514081220.history', 'second_history.txt')

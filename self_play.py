@@ -25,23 +25,24 @@ class HistoryData:
         return self.path
     def get_history(self):
         return self.history
-    
-def init_history_data(folder:str)->HistoryData:
-    now = datetime.now()
+
+def prepare_dir(folder:str)->str:
     if(folder[-1] != '/'):
         folder = '{0}/'.format(folder)
     os.makedirs(folder, exist_ok=True)
-    path =  folder + '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
+    return folder
+
+def init_history_data(folder:str)->HistoryData:
+    now = datetime.now()
+    path =  prepare_dir(folder) + '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
     return HistoryData(path)
 
 def init_history_data_dual(folder1:str, folder2:str)->Tuple[HistoryData, HistoryData]:
     now = datetime.now()
     filename = '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
-    for folder in [folder1, folder2]:
-        if(folder[-1] != '/'):
-            folder = '{0}/'.format(folder)
-        os.makedirs(folder, exist_ok=True)
-    return HistoryData(folder1 + filename), HistoryData(folder2 + filename)
+    path1 = prepare_dir(folder1) + filename
+    path2 = prepare_dir(folder2) + filename
+    return HistoryData(path1), HistoryData(path2)
 
 #def write_data(folder:str, history)->str:
 #    now = datetime.now()

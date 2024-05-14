@@ -21,7 +21,7 @@ def debug_gui(board_size : int=15):
     second_model = tf.keras.models.load_model(get_model_file_best_second(board_size= board_size))
 
     first_agent = Agent(HumanGuiBrain())
-    second_agent = Agent(HumanGuiBrain())
+    second_agent = Agent(NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=300, first_model=first_model, second_model=second_model, ts_dict=ThreadSafeDict()))
     run_gui(board=board, first_agent=first_agent, second_agent=second_agent)
 
     
@@ -105,7 +105,7 @@ def debug_selfplay(board_size:int = 11,
 
 #validate_network()
  
-#debug_gui(9)
+debug_gui(9)
 
 #train_cycle_gomoku(board_size=9, brain_evaluate_count=5, selfplay_repeat=10, epoch_count=1, cycle_count=1, eval_count=1, use_cache=True)
 
@@ -116,4 +116,5 @@ def debug_selfplay(board_size:int = 11,
 
 #train_cycle_gomoku(board_size=9, brain_evaluate_count=20, selfplay_repeat=2, epoch_count=2, cycle_count=2, eval_count=1, use_cache=True, initial_train_count=10, initial_selfplay_repeat=10, history_updater=ZeroToOneHistoryUpdater())
 
-train_cycle_dualmodel_gomoku(board_size=9, brain_evaluate_count=20, selfplay_repeat=2, epoch_count=2, cycle_count=2, eval_count=1, use_cache=True, initial_train_count=10, initial_selfplay_repeat=10, history_updater=ZeroToOneHistoryUpdater())
+#train_cycle_dualmodel_gomoku(board_size=9, brain_evaluate_count=300, selfplay_repeat=100, epoch_count=50, cycle_count=10, eval_count=10, use_cache=True, initial_train_count=500, initial_selfplay_repeat=1000, history_updater=ZeroToOneHistoryUpdater())
+
