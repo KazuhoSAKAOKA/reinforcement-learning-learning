@@ -1,11 +1,11 @@
 import numpy as np
 import math
-from game_board import GameRelativeResult, GameResult
+from game_board import GameBoard, GameRelativeResult, GameResult
 from brains import Brain
 
-def playout(board):
+def playout(game_board: GameBoard):
     # 相手が行動した直後の状態を受け取る。相手が勝ってたら自分の負け。
-    done, result = board.judge_last_action()
+    done, result = game_board.judge_last_action()
     if done:
         if result == GameRelativeResult.draw:
             return 0
@@ -13,8 +13,8 @@ def playout(board):
             return -1
         else:
             return 1
-    actions = board.get_legal_actions()
-    next_state, _ = board.transit_next(np.random.choice(actions))
+    actions = game_board.get_legal_actions()
+    next_state, _ = game_board.transit_next(np.random.choice(actions))
     return -playout(next_state)
 
 class PrimeMonteCarloBrain:

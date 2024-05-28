@@ -20,8 +20,8 @@ def debug_gui(board_size : int=15):
     first_model = tf.keras.models.load_model(get_model_file_best_first(board_size= board_size))
     second_model = tf.keras.models.load_model(get_model_file_best_second(board_size= board_size))
 
-    first_agent = Agent(HumanGuiBrain())
-    second_agent = Agent(NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=300, first_model=first_model, second_model=second_model, ts_dict=ThreadSafeDict()))
+    first_agent = Agent(NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=300, first_model=first_model, second_model=second_model, ts_dict=ThreadSafeDict()))
+    second_agent = Agent(HumanGuiBrain())
     run_gui(board=board, first_agent=first_agent, second_agent=second_agent)
 
     

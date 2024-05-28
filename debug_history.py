@@ -42,5 +42,5 @@ if __name__ == '__main__':
     #history_save(GomokuBoard(11), './data/gomoku_11/first/20240511082326.history', 'first_history.txt')
     #history_save(GomokuBoard(11), './data/gomoku_11/second/20240511082326.history', 'second_history.txt')
 
-    history_save(board, './data/gomoku_9/first20240514081220.history', 'first_history.txt')
-    history_save(board, './data/gomoku_9/second20240514081220.history', 'second_history.txt')
+    history_save(board, './data/gomoku_9/first/20240515051822.history', 'first_history.txt')
+    history_save(board, './data/gomoku_9/second/20240515051822.history', 'second_history.txt')

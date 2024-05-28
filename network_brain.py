@@ -3,33 +3,11 @@ import numpy as np
 from tensorflow.keras.models import Model
 from brains import Brain
 from game_board import GameBoard
-from pv_mcts import pv_mcts_policies,boltzman
+from mcts_node import pv_mcts_policies,boltzman
 from selfplay_brain import SelfplayBrain, HistoryUpdater, HistoryUpdaterFactory, HistoryUpdaterType
 from threadsafe_dict import ThreadSafeDict
 from parameter import PARAM
-
-def predict_core(model : Model, board : GameBoard)->Tuple[np.ndarray, float]:
-    # 推論のための入力データのシェイプの変換
-    x = board.reshape_to_input()
-    #print(x)
-    # 推論
-    y = model.predict(x, batch_size=1, verbose=0)
-
-    # 方策の取得
-    policies = y[0][0][:]
-    policies /= np.sum(policies) if np.sum(policies) else 1 # 合計1の確率分布に変換
-
-
-    # 価値の取得
-    value = y[1][0][0]
-    return policies, value
-
-# 推論
-def predict(model : Model, board : GameBoard, ts_dict : ThreadSafeDict)->Tuple[np.ndarray, float]:
-    if ts_dict is None:
-        return predict_core(model, board)
-    return ts_dict.get_or_add(board.to_state_key(), lambda: predict_core(model, board))
-
+from predictor import Predictor
 
 class NetworkMonteCarloTreeSearcher:
     def __init__(self, evaluate_count : int, model: Model, ts_dict : ThreadSafeDict):

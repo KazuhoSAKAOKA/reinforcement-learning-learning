@@ -12,7 +12,7 @@ import shutil
 import concurrent.futures
 
 from game_board import GameBoard, get_first_player_value
-from pv_mcts import pv_mcts_scores
+from mcts_node import pv_mcts_scores
 from game import GameEnv, GameStats
 from agent import Agent
 from brains import RandomBrain

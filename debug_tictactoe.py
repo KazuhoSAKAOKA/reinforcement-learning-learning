@@ -18,7 +18,7 @@ from threadsafe_dict import ThreadSafeDict
 import os
 import time 
 import numpy as np
-import pv_mcts
+import mcts_node
 import pickle
 import parameter as PARAM
 import tensorflow as tf
