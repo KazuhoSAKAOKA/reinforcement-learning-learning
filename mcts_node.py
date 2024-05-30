@@ -22,29 +22,34 @@ def boltzman(xs, temperature):
     return [x / sum(xs) for x in xs]
 
 class AbstractMctsNode:
-    #abstractmethod
+    def __init__(self):
+        self.w :float = 0.0 # 累計価値
+        self.n :int = 0 # 試行回数
     def get_selected_count(self)->int:
-        pass
-    #abstractmethod
+        return self.n
     def get_value(self)->float:
-        pass
+        return self.w
     #abstractmethod
     def get_policy(self)->float:
         pass
+    #abstractmethod
+    def evaluate(self)->float:
+        pass
+    def __repr__(self)->str:
+        return 'Node(w:{0},n:{1})'.format(self.w, self.n)
 
 # ノードのリストを試行回数のリストに変換
 def nodes_to_scores(nodes : list[AbstractMctsNode])->np.ndarray:
     scores = [c.get_selected_count() for c in nodes]
     return np.array(scores)
 
+# MCTSearchで次のノードを選ぶ。
 class NextNodeSelector:
     #abstractmethod
     def select(self, nodes : list[AbstractMctsNode])->AbstractMctsNode:
         pass
 
-    def get_child_node_selector(self)->'NextNodeSelector':
-        return self
-
+# UCB1により次のノードを選ぶ
 class UCB1NextNodeSelector(NextNodeSelector):
     def select(self, nodes : list[AbstractMctsNode])->AbstractMctsNode:
         for node in nodes:
@@ -56,9 +61,9 @@ class UCB1NextNodeSelector(NextNodeSelector):
         ucb1_values = []
         for node in nodes:
             ucb1_values.append(-node.get_value() / node.get_selected_count() + sqrt(2 * np.log(t) / node.get_selected_count()))
-        return nodes[np.argmax(ucb1_values)]
+        return nodes[np.random.choice(np.where(ucb1_values == np.max(ucb1_values))[0])]
     
-
+# Policy-UCTにより次のノードを選ぶ
 class PolicyUCTNextNodeSelector(NextNodeSelector):
     def __init__(self, c_base: float = 19652, c_init: float = 1.25):
         self.c_base = c_base
@@ -68,7 +73,7 @@ class PolicyUCTNextNodeSelector(NextNodeSelector):
         # 最初の一回はポリシーをそのまま使用
         if t == 0:
             policies = [c.get_policy() for c in nodes]
-            return nodes[np.argmax(policies)]
+            return nodes[np.random.choice(np.where(policies == np.max(policies))[0])]
         
         # アーク評価値の計算
         pucb_values = []
@@ -82,9 +87,9 @@ class PolicyUCTNextNodeSelector(NextNodeSelector):
             arc_value = q_value + u_value
             pucb_values.append(arc_value)
         # アーク評価値が最大の子ノードを返す
-        return nodes[np.argmax(pucb_values)]
+        return nodes[np.random.choice(np.where(pucb_values == np.max(pucb_values))[0])]
 
-
+# Policy-UCTにより次のノードを選ぶ+ディリクレノイズ
 class WithDirichletPolicyUCTNextNodeSelector(PolicyUCTNextNodeSelector):
 
     def __init__(self, c_base: float = 19652, c_init: float = 1.25, alpha: float = 0.3, epsilon: float = 0.25):
@@ -97,8 +102,8 @@ class WithDirichletPolicyUCTNextNodeSelector(PolicyUCTNextNodeSelector):
         # 最初の一回はポリシーをそのまま使用
         if t == 0:
             policies = [c.get_policy() for c in nodes]
-            policies = [(1 - self.parameter.epsilon) * p + self.parameter.epsilon * noises[i] for i, p in enumerate(policies)]
-            return nodes[np.argmax(policies)]
+            policies = [(1 - self.epsilon) * p + self.epsilon * noises[i] for i, p in enumerate(policies)]
+            return nodes[np.random.choice(np.where(policies == np.max(policies))[0])]
         
         # アーク評価値の計算
         pucb_values = []
@@ -108,26 +113,27 @@ class WithDirichletPolicyUCTNextNodeSelector(PolicyUCTNextNodeSelector):
             q_value = (-node.get_value() / n  if n else 0.0)
             cs = np.log((1 + t + self.c_base) / self.c_base) + self.c_init
             policy = node.get_policy()
-            policy = (1 - self.parameter.epsilon) * policy + self.parameter.epsilon * noises[i]
+            policy = (1 - self.epsilon) * policy + self.epsilon * noises[i]
             u_value = cs * policy * sqrt(t) / (1 + n)
             arc_value = q_value + u_value
             pucb_values.append(arc_value)
         # アーク評価値が最大の子ノードを返す
-        return nodes[np.argmax(pucb_values)]
+        return nodes[np.random.choice(np.where(pucb_values == np.max(pucb_values))[0])]
     def get_child_node_selector(self)->'NextNodeSelector':
         return PolicyUCTNextNodeSelector(self.c_base, self.c_init)
 
 # モンテカルロ木探索ノードの定義
-class MctsNode:
+class MctsNode(AbstractMctsNode):
     # ノードの初期化
     def __init__(self,
                 game_board : GameBoard,
-                is_root : bool):
+                is_root : bool,
+                node_selector: NextNodeSelector):
+        super().__init__()
         self.game_board = game_board
-        self.w :float = 0.0 # 累計価値
-        self.n :int = 0 # 試行回数
         self.child_nodes = None  # 子ノード群
         self.is_root = is_root
+        self.node_selector = node_selector
     def __repr__(self) -> str:
         return 'Node(w:{0},n:{1})'.format(self.w, self.n)
     
@@ -142,7 +148,7 @@ class MctsNode:
         pass
 
     # 局面の価値の計算
-    def evaluate(self):
+    def evaluate(self)->float:
         # ゲーム終了時
         done, result = self.game_board.judge_last_action()
         if done:
@@ -167,7 +173,7 @@ class MctsNode:
 
         # 子ノードが存在しない時
         if not self.child_nodes:
-            value = -self.evaluate_self()
+            value = self.evaluate_self()
 
             self.w += value
             self.n += 1
@@ -178,27 +184,28 @@ class MctsNode:
 
         # 子ノードが存在する時
         else:
-            # アーク評価値が最大の子ノードの評価で価値を取得
-            value = -self.next_child_node().evaluate()
+            selected_node = self.node_selector.select(self.child_nodes)
+            value = -selected_node.evaluate()
 
             # 累計価値と試行回数の更新
             self.w += value
             self.n += 1
+
+            if logger.isEnabledFor(DEBUG):
+                logger.debug('selected node:{0}, value:{1}, total:{2}, selected_cnt:{3}'.format(selected_node, value, self.w, self.n))
+
             return value
 
-    # abstractmethod
-    def next_child_node(self)->'MctsNode':
-        pass
-
-class RandomMctsNode:
+class RandomMctsNode(MctsNode):
     def __init__(self,
                 game_board : GameBoard,
                 is_root : bool,
                 expand_limit : int,
                 node_selector : NextNodeSelector = None):
-        super().__init__(game_board=game_board, is_root=is_root)
+        if node_selector is None:
+            node_selector = UCB1NextNodeSelector()
+        super().__init__(game_board=game_board, is_root=is_root, node_selector=node_selector)
         self.expand_limit = expand_limit
-        self.node_selector = node_selector if node_selector else UCB1NextNodeSelector()
     def evaluate_self(self)->float:
         value = playout(game_board=self.game_board)
         return value
@@ -215,57 +222,41 @@ class RandomMctsNode:
                 self.child_nodes.append(RandomMctsNode(
                     game_board=next_board, 
                     is_root= False,
-                    expand_limit= self.expand_limit, 
-                    next_node_selector= self.node_selector.get_child_node_selector()))
+                    expand_limit=self.expand_limit, 
+                    node_selector=self.node_selector))
 
-    def next_child_node(self)->'RandomMctsNode':
-        return self.node_selector(self.child_nodes)
-
-
-class NetworkMctsNode:
+class PolicyValueNetworkMctsNode(MctsNode):
     # ノードの初期化
     def __init__(self,
                 game_board : GameBoard,
                 is_root : bool,
-                parameter : Parameter,
-                predictor_alpha: Predictor,
-                predictor_beta: Predictor,
-                node_selector : NextNodeSelector = None):
-        super().__init__(game_board=game_board, is_root=is_root)
-        self.parameter = parameter
-        self.predictor_alpha = predictor_alpha
-        self.predictor_beta = predictor_beta
-        self.node_selector = node_selector if node_selector else PolicyUCTNextNodeSelector()
-    def is_expandable(self)->bool:
-        return True
-
-    def next_child_node(self)->'NetworkMctsNode':
-        return self.node_selector.select(self.child_nodes)
-
-class DualNetworkMctsNode(NetworkMctsNode):
-    # ノードの初期化
-    def __init__(self,
-                game_board : GameBoard,
-                is_root : bool,
-                parameter : Parameter,
                 predictor_alpha: Predictor,
                 predictor_beta: Predictor,
                 policy : float,
-                node_selector : NextNodeSelector = None):
-        super().__init__(game_board=game_board, parameter=parameter, is_root=is_root, predictor_alpha=predictor_alpha, predictor_beta=predictor_beta, node_selector=node_selector)
+                node_selector : NextNodeSelector = None,
+                child_node_selector : NextNodeSelector = None):
+        if(node_selector is None):
+            node_selector = PolicyUCTNextNodeSelector()
+        if child_node_selector is None and is_root:
+            child_node_selector = PolicyUCTNextNodeSelector()
+        super().__init__(
+            game_board=game_board, 
+            is_root=is_root, 
+            node_selector=node_selector)
+        self.child_node_selector = child_node_selector
+        self.predictor_alpha = predictor_alpha
+        self.predictor_beta = predictor_beta
         self.policy :float= policy # 方策
-        self.policies = None
-        self.value = None 
-
+    def is_expandable(self)->bool:
+        return True
+    
+    def get_policy(self)->float:
+        return self.policy    
     def evaluate_self(self)->float:
         # ニューラルネットワークの推論で方策と価値を取得
         prediction = self.predictor_alpha(self.game_board)
-
         self.policies = prediction.policies
-        self.value = prediction.value
-
-        return self.value
-    
+        return prediction.value
 
     def expand(self):
         if(self.policies is None):
@@ -277,14 +268,14 @@ class DualNetworkMctsNode(NetworkMctsNode):
             next, succeed = self.game_board.transit_next(action)
             if not succeed:
                 Exception("Invalid action")
-            self.child_nodes.append(DualNetworkMctsNode(
+            self.child_nodes.append(PolicyValueNetworkMctsNode(
                     game_board=next,
                     is_root= False,
-                    parameter= self.parameter,
                     predictor_alpha= self.predictor_beta,
                     predictor_beta= self.predictor_alpha,
-                    policy= self.policies[action],
-                    next_node_selector= self.node_selector.get_child_node_selector()))
+                    policy=self.policies[action],
+                    node_selector=self.child_node_selector,
+                    child_node_selector=self.child_node_selector))
 
 
 '''
@@ -389,7 +380,7 @@ class ActionSelector:
 class MaxActionSelector(ActionSelector):
     def select_action(self, root_node:MctsNode)->int:
         scores = nodes_to_scores(root_node.child_nodes)
-        return np.argmax(scores)
+        return np.random.choice(np.where(scores == np.max(scores))[0])
 
 class RandomChoiceActionSelector(ActionSelector):
     def select_action(self, root_node:MctsNode)->int:
@@ -410,7 +401,10 @@ class MonteCarloTreeSearcher:
     def execute(self, evaluate_count: int)->int:
         
         # ルートの子ノードを展開する
+        while not self.root_node.is_expandable():
+            self.root_node.evaluate()
         self.root_node.expand()
+
         if len(self.root_node.child_nodes) > 1:
             # 複数回の評価の実行
             for _ in range(evaluate_count):

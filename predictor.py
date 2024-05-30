@@ -18,14 +18,24 @@ class DualNetworkPrediction:
     def __init__(self, policies: np.ndarray, value: float):
         self.policies = policies
         self.value = value
+    def get_policies(self)->np.ndarray:
+        return self.policies
+    def get_value(self)->float:
+        return self.value
 
 class PolicyNetworkPrediction:
     def __init__(self, policies: np.ndarray):
         self.policies = policies
+    def get_policies(self)->np.ndarray:
+        return self.policies
+class ValueNetworkPrediction:
+    def __init__(self, value: float):
+        self.value = value
+    def get_value(self)->float:
+        return self.value
 
 class Predictor:
-    def __init__(self, model: Model, ts_dict : ThreadSafeDict = None):
-        self.model = model
+    def __init__(self, ts_dict : ThreadSafeDict = None):
         self.ts_dict = ts_dict
     def __call__(self, game_board: GameBoard) -> Prediction:
         return self.predict(game_board)
@@ -40,7 +50,8 @@ class Predictor:
 
 class DualNetworkPredictor(Predictor):
     def __init__(self, model: Model, ts_dict : ThreadSafeDict = None):
-        super().__init__(model, ts_dict)
+        super().__init__(ts_dict)
+        self.model = model
 
 
     def predict_core(self, game_board: GameBoard) -> Prediction:
@@ -57,7 +68,8 @@ class DualNetworkPredictor(Predictor):
 
 class PolicyNetworkPredictor(Predictor):
     def __init__(self, model: Model, ts_dict : ThreadSafeDict = None):
-        super().__init__(model, ts_dict)
+        super().__init__(ts_dict)
+        self.model = model
 
     def predict_core(self, game_board: GameBoard) -> Prediction:
         # 推論のための入力データのシェイプの変換
@@ -66,23 +78,15 @@ class PolicyNetworkPredictor(Predictor):
         y = self.model.predict(x, batch_size=1, verbose=0)
         return PolicyNetworkPrediction(y)
 
+class ValueNetworkPredictor(Predictor):
+    def __init__(self, model: Model, ts_dict : ThreadSafeDict = None):
+        super().__init__(ts_dict)
+        self.model = model
 
-'''
-def predict_core(model : Model, game_board : GameBoard)->Prediction:
-    # 推論のための入力データのシェイプの変換
-    x = game_board.reshape_to_input()
-    # 推論
-    y = model.predict(x, batch_size=1, verbose=0)
-    # 方策の取得
-    policies = y[0][0][:]
-    policies /= np.sum(policies) if np.sum(policies) else 1 # 合計1の確率分布に変換
-    # 価値の取得
-    value = y[1][0][0]
-    return policies, value
+    def predict_core(self, game_board: GameBoard) -> Prediction:
+        # 推論のための入力データのシェイプの変換
+        x = game_board.reshape_to_input()
+        # 推論
+        y = self.model.predict(x, batch_size=1, verbose=0)
+        return ValueNetworkPrediction(y)
 
-# 推論
-def predict(model : Model, board : GameBoard, ts_dict : ThreadSafeDict)->Tuple[np.ndarray, float]:
-    if ts_dict is None:
-        return predict_core(model, board)
-    return ts_dict.get_or_add(board.to_state_key(), lambda: predict_core(model, board))
-'''

@@ -45,7 +45,7 @@ class GameBoard:
     def to_hisotry_record(self)->any:
         pass
 
-    # モデルのに渡す形状に変換
+    # モデルに渡す形状に変換
     @abstractmethod
     def reshape_to_input(self)->np.ndarray:
         pass    
