@@ -43,6 +43,8 @@ def nodes_to_scores(nodes : list[AbstractMctsNode])->np.ndarray:
     scores = [c.get_selected_count() for c in nodes]
     return np.array(scores)
 
+
+
 # MCTSearchで次のノードを選ぶ。
 class NextNodeSelector:
     #abstractmethod
@@ -146,7 +148,9 @@ class MctsNode(AbstractMctsNode):
     #abstractmethod
     def expand(self):
         pass
-
+    def get_last_action(self)->int:
+        return self.game_board.get_last_action()
+    
     # 局面の価値の計算
     def evaluate(self)->float:
         # ゲーム終了時
@@ -278,101 +282,6 @@ class PolicyValueNetworkMctsNode(MctsNode):
                     child_node_selector=self.child_node_selector))
 
 
-'''
-class PolicyNetworkMctsNode(NetworkMctsNode):
-    def __init__(self,
-                game_board : GameBoard,
-                is_root : bool,
-                parameter : Parameter,
-                predictor_alpha: Predictor,
-                predictor_beta: Predictor,
-                policy : float):
-        super().__init__(game_board=game_board, parameter=parameter, is_root=is_root, predictor_alpha=predictor_alpha, predictor_beta=predictor_beta)
-        self.policy : float = policy # 方策
-        self.policies = None
-
-    def evaluate_self(self)->float:
-        # ニューラルネットワークの推論で方策を取得
-        prediction = self.predictor_alpha(self.game_board)
-
-        self.policies = prediction.policies
-
-        return np.amax(self.policies)
-    
-
-    def expand(self):
-        if(self.policies is None):
-            self.evaluate_self()
-        self.child_nodes = []
-        for action in self.game_board.get_legal_actions():
-            next, succeed = self.game_board.transit_next(action)
-            if not succeed:
-                Exception("Invalid action")
-            self.child_nodes.append(PolicyNetworkMctsNode(game_board=next, is_root=False, parameter=self.parameter,predictor_alpha=self.predictor_beta,predictor_beta=self.predictor_alpha,policy=self.policies[action]))
-
-class ValueNetworkMctsNode(NetworkMctsNode):
-    # ノードの初期化
-    def __init__(self,
-                game_board : GameBoard,
-                is_root : bool,
-                parameter : Parameter,
-                predictor_alpha: Predictor,
-                predictor_beta: Predictor):
-        super().__init__(game_board=game_board, parameter=parameter, is_root=is_root, predictor_alpha=predictor_alpha, predictor_beta=predictor_beta)
-        self.value = None 
-    def evaluate_self(self)->float:
-        # ニューラルネットワークの推論で方策を取得
-        prediction = self.predictor_alpha(self.game_board)
-
-        self.value = prediction.value
-
-        return self.value
-    
-
-    def expand(self):
-        if(self.value is None):
-            self.evaluate_self()
-
-        # 子ノードの展開
-        self.child_nodes = []
-        for action in self.game_board.get_legal_actions():
-            next, succeed = self.game_board.transit_next(action)
-            if not succeed:
-                Exception("Invalid action")
-            self.child_nodes.append(ValueNetworkMctsNode(game_board=next, is_root=False, parameter=self.parameter,predictor_alpha=self.predictor_beta,predictor_beta=self.predictor_alpha))
-    
-    def next_child_node(self):
-        if self.is_root and self.parameter.alpha > 0:
-            noises = np.random.dirichlet([self.parameter.alpha] * len(self.child_nodes))
-
-        t = sum(nodes_to_scores(self.child_nodes))
-
-        # 最初の一回はポリシーをそのまま使用
-        if t == 0:
-            policies = [c.policy for c in self.child_nodes]
-            if self.is_root and self.parameter.alpha > 0:
-                policies = [(1 - self.parameter.epsilon) * p + self.parameter.epsilon * noises[i] for i, p in enumerate(policies)]
-            return self.child_nodes[np.argmax(policies)]
-        
-        # アーク評価値の計算
-        pucb_values = []
-
-        for i, child_node in enumerate(self.child_nodes):
-            q_value = (-child_node.w / child_node.n if child_node.n else 0.0)
-            cs = np.log((1 + t + self.parameter.c_base) / self.parameter.c_base) + self.parameter.c_init
-            child_policy = child_node.policy
-            # ルートであればノイズを付加
-            if self.is_root and self.parameter.alpha > 0:
-                child_policy = (1 - self.parameter.epsilon) * child_policy + self.parameter.epsilon * noises[i]
-            u_value = cs * child_policy * sqrt(t) / (1 + child_node.n)
-            arc_value = q_value + u_value
-            pucb_values.append(arc_value)
-
-        # アーク評価値が最大の子ノードを返す
-        max_pucb_index = np.argmax(pucb_values)
-        return self.child_nodes[max_pucb_index]
-'''
-
 class ActionSelector:
     #abstract method
     def select_action(self, root_node:MctsNode)->int:
@@ -380,108 +289,49 @@ class ActionSelector:
 class MaxActionSelector(ActionSelector):
     def select_action(self, root_node:MctsNode)->int:
         scores = nodes_to_scores(root_node.child_nodes)
-        return np.random.choice(np.where(scores == np.max(scores))[0])
+        node_index = np.random.choice(np.where(scores == np.max(scores))[0])
+        return root_node.child_nodes[node_index].get_last_action()
 
 class RandomChoiceActionSelector(ActionSelector):
     def select_action(self, root_node:MctsNode)->int:
         scores = nodes_to_scores(root_node.child_nodes)
-        return np.random.choice(len(scores), p=scores)
+        node_index = np.random.choice(len(scores), p=scores)
+        return root_node.child_nodes[node_index].get_last_action()
 
 class BoltzmanActionSelector(ActionSelector):
     def select_action(self, root_node:MctsNode)->int:
         scores = nodes_to_scores(root_node.child_nodes)
-        return np.random.choice(len(scores), p=boltzman(scores, root_node.parameter.temperature))
+        node_index = np.random.choice(len(scores), p=boltzman(scores, root_node.parameter.temperature))
+        return root_node.child_nodes[node_index].get_last_action()
 
-
+def nodes_to_ratios(activation_space: int, nodes : list[AbstractMctsNode])->np.ndarray:
+    ratios = np.zeros(activation_space, dtype=np.float32)
+    t = sum(nodes_to_scores(nodes))
+    for node in nodes:
+        ratios[node.get_last_action()] = node.get_selected_count() / t
+    return ratios
 class MonteCarloTreeSearcher:
-    def __init__(self, root_node: MctsNode, action_selector: ActionSelector):
-        self.root_node = root_node
+    def __init__(self, evaluate_count :int, action_selector: ActionSelector):
+        self.evaluate_count = evaluate_count
         self.action_selector = action_selector
-
-    def execute(self, evaluate_count: int)->int:
+    def __call__(self, root_node:MctsNode)->int:
+        return self.execute(root_node=root_node)
+    def execute(self, root_node:MctsNode)->int:
         
         # ルートの子ノードを展開する
-        while not self.root_node.is_expandable():
-            self.root_node.evaluate()
-        self.root_node.expand()
+        while not root_node.is_expandable():
+            root_node.evaluate()
+        root_node.expand()
 
-        if len(self.root_node.child_nodes) > 1:
-            # 複数回の評価の実行
-            for _ in range(evaluate_count):
-                self.root_node.evaluate()
-        elif len(self.root_node.child_nodes) == 1:
-            self.root_node.child_nodes[0].n = 1
+        if len(root_node.child_nodes) == 1:
+            return root_node.child_nodes[0].get_last_action()
 
-        return self.action_selector.select_action(self.root_node)
+        # 評価
+        for _ in range(self.evaluate_count):
+            root_node.evaluate()
+        return self.action_selector.select_action(root_node)
+    def get_action_rations(self, root_node:MctsNode)->np.ndarray:
+        return nodes_to_ratios(activation_space=root_node.game_board.get_output_size(),nodes=root_node.child_nodes)
     
 
 
-
-
-
-'''
-def pv_mcts_scores(
-            game_board : GameBoard,
-            evaluate_count : int,
-            predict_alpha :Callable[[GameBoard], Tuple[np.ndarray, float]],
-            predict_beta:Callable[[GameBoard], Tuple[np.ndarray, float]],
-            parameter : Parameter):
-    root_node = pv_mcts_core(board=board, evaluate_count=evaluate_count, predict_alpha=predict_alpha, predict_beta=predict_beta)
-    scores = nodes_to_scores(root_node.child_nodes)
-
-    return scores
-
-def pv_mcts_policies(board : GameBoard
-                   , evaluate_count : int
-                   , predict_alpha :Callable[[GameBoard], Tuple[np.ndarray, float]]
-                   , predict_beta:Callable[[GameBoard], Tuple[np.ndarray, float]])->np.ndarray:
-    root_node = pv_mcts_core(board=board, evaluate_count=evaluate_count, predict_alpha=predict_alpha, predict_beta=predict_beta)
-
-
-    scores = nodes_to_scores(root_node.child_nodes)    
-    # 行動空間に対する確率分布の取得　行動できないアクションは0
-    policies = np.zeros(board.get_output_size(), dtype=np.float32)
-    total = sum(scores)
-    if total > 0:
-        for s, c in zip(scores, root_node.child_nodes):
-            policies[c.board.get_last_action()] = s / total
-    else:
-        legal_actions = board.get_legal_actions()
-        for action in legal_actions:
-            policies[action] = 1.0 / len(legal_actions)
-
-    return policies
-'''
-
-'''
-    def select1(self, nodes : list[AbstractMctsNode])->AbstractMctsNode:
-        if self.is_root and self.parameter.alpha > 0:
-            noises = np.random.dirichlet([self.parameter.alpha] * len(self.child_nodes))
-
-        t = sum(nodes_to_scores(self.child_nodes))
-
-        # 最初の一回はポリシーをそのまま使用
-        if t == 0:
-            policies = [c.policy for c in self.child_nodes]
-            if self.is_root and self.parameter.alpha > 0:
-                policies = [(1 - self.parameter.epsilon) * p + self.parameter.epsilon * noises[i] for i, p in enumerate(policies)]
-            return self.child_nodes[np.argmax(policies)]
-        
-        # アーク評価値の計算
-        pucb_values = []
-
-        for i, child_node in enumerate(self.child_nodes):
-            q_value = (-child_node.w / child_node.n if child_node.n else 0.0)
-            cs = np.log((1 + t + self.parameter.c_base) / self.parameter.c_base) + self.parameter.c_init
-            child_policy = child_node.policy
-            # ルートであればノイズを付加
-            if self.is_root and self.parameter.alpha > 0:
-                child_policy = (1 - self.parameter.epsilon) * child_policy + self.parameter.epsilon * noises[i]
-            u_value = cs * child_policy * sqrt(t) / (1 + child_node.n)
-            arc_value = q_value + u_value
-            pucb_values.append(arc_value)
-
-        # アーク評価値が最大の子ノードを返す
-        max_pucb_index = np.argmax(pucb_values)
-        return self.child_nodes[max_pucb_index]
-'''

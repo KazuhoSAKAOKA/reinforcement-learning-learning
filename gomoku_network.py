@@ -20,10 +20,10 @@ from mini_max import AlphaBetaBrain
 from montecarlo import MonteCarloBrain
 from network_common import judge_stats, train_network, self_play, train_cycle, train_cycle_dualmodel,evaluate_model
 from network_brain import predict,NetworkBrain
-from selfplay_brain import HistoryUpdater, ZeroToOneHistoryUpdater
+from self_play_brain import HistoryUpdater, ZeroToOneHistoryUpdater
 from parameter import PARAM
 from self_play import self_play_dualmodel, self_play
-from selfplay_brain import SelfplayRandomBrain
+from self_play_brain import SelfplayRandomBrain
 from google_colab_helper import google_drive_path
 
 DN_FILTERS = 128

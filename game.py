@@ -28,9 +28,9 @@ class GameStats:
     def __repr__(self) -> str:
         return "First player win: {0}, Second player win: {1}, Draw: {2}".format(self.first_player_win, self.second_player_win, self.draw)
 class GameEnv:
-    def __init__(self, board : GameBoard, first_agent : Agent, second_agent : Agent , prev_action_callback :Callable[[GameBoard], None] = do_empty1, selected_action_callback : Callable[[GameBoard, int],None]= do_empty2, episode_callback : Callable[[int, GameBoard, GameResult], None] = do_empty3):
-        self.board = board
-        self.board.reset()
+    def __init__(self, game_board : GameBoard, first_agent : Agent, second_agent : Agent , prev_action_callback :Callable[[GameBoard], None] = do_empty1, selected_action_callback : Callable[[GameBoard, int],None]= do_empty2, episode_callback : Callable[[int, GameBoard, GameResult], None] = do_empty3):
+        self.game_board = game_board
+        self.game_board.reset()
         self.first_agent = first_agent
         self.second_agent = second_agent
         self.prev_action_callback = prev_action_callback
@@ -39,12 +39,12 @@ class GameEnv:
         self.index = 0
     def reset(self):
         self.index = 0
-        self.board.reset()
+        self.game_board.reset()
 
     
     def play(self) -> GameResult:
-        self.board.reset()
-        current = self.board
+        self.game_board.reset()
+        current = self.game_board
         while True:
             done, result = current.judge_last_action()
             if done:

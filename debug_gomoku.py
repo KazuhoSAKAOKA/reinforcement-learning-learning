@@ -9,7 +9,7 @@ import tensorflow as tf
 import os
 import concurrent.futures
 from threadsafe_dict import ThreadSafeDict
-from selfplay_brain import SelfplayBrain, SelfplayRandomBrain, HistoryUpdater, HistoryUpdaterType, HistoryUpdaterFactory,ZeroToOneHistoryUpdater
+from self_play_brain import SelfplayBrain, SelfplayRandomBrain, HistoryUpdater, HistoryUpdaterType, HistoryUpdaterFactory,ZeroToOneHistoryUpdater
 from network_brain import NetworkBrain, SelfplayNetworkBrain, NetworkBrainFactory
 from self_play import self_play_dualmodel
 from parameter import PARAM

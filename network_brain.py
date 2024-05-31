@@ -3,8 +3,7 @@ import numpy as np
 from tensorflow.keras.models import Model
 from brains import Brain
 from game_board import GameBoard
-from mcts_node import pv_mcts_policies,boltzman
-from selfplay_brain import SelfplayBrain, HistoryUpdater, HistoryUpdaterFactory, HistoryUpdaterType
+from self_play_brain import SelfplayBrain, HistoryUpdater
 from threadsafe_dict import ThreadSafeDict
 from parameter import PARAM
 from predictor import Predictor

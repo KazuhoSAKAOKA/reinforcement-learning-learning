@@ -32,7 +32,7 @@ class GameBoard:
         self.turn = 0
         self.last_action = -1
     def is_ignore_state(self)->bool:
-        return True
+        return False
 
     @abstractmethod
     # 行動空間サイズ

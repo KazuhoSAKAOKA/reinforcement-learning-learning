@@ -12,7 +12,6 @@ import shutil
 import concurrent.futures
 
 from game_board import GameBoard, get_first_player_value
-from mcts_node import pv_mcts_scores
 from game import GameEnv, GameStats
 from agent import Agent
 from brains import RandomBrain
@@ -20,7 +19,7 @@ from montecarlo import MonteCarloBrain
 from typing import Callable
 from parameter import PARAM
 from typing import Tuple
-from selfplay_brain import SelfplayRandomBrain, HistoryUpdater
+from self_play_brain import SelfplayRandomBrain, HistoryUpdater
 from network_brain import NetworkBrain, SelfplayNetworkBrain, NetworkBrainFactory
 from threadsafe_dict import ThreadSafeDict
 

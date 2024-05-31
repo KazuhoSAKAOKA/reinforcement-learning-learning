@@ -3,7 +3,7 @@ from agent import Agent
 from game_board import GameBoard, get_first_player_value, GameResult
 from game import GameEnv
 from datetime import datetime
-from selfplay_brain import SelfplayBrain
+from self_play_brain import SelfplayBrain
 import pickle
 import os
 from tictactoe_board import TicTacToeBoard
@@ -75,7 +75,7 @@ def self_play(
             start_index:int = 0
             ) -> str:
     
-    env = GameEnv(game_board, Agent(first_brain), Agent(second_brain))
+    env = GameEnv(game_board=game_board, first_agent=Agent(first_brain),second_agent= Agent(second_brain))
     first_win = 0
     second_win = 0
     draw = 0
@@ -113,13 +113,13 @@ def self_play(
 def self_play_dualmodel(
             first_brain: SelfplayBrain, 
             second_brain : SelfplayBrain, 
-            board : GameBoard, 
+            game_board : GameBoard, 
             repeat_count : int, 
             history_folder_first: str, 
             history_folder_second: str,
             is_continue:bool = False,
             start_index:int = 0) -> Tuple[str,str]:
-    env = GameEnv(board, Agent(first_brain), Agent(second_brain))
+    env = GameEnv(game_board=game_board, first_agent=Agent(first_brain),second_agent= Agent(second_brain))
     first_win = 0
     second_win = 0
     draw = 0
