@@ -106,4 +106,42 @@ class StoneGameBoard(GameBoard):
                 else:
                     temp += '-'
         return temp
+
+    def augmente_data(self, history) -> any:
+        for x, y_policy, y_value in history:
+            print(x.shape)
+            print(y_policy.shape)
+
+            x1 = x[0][:].reshape([self.board_size, self.board_size])
+            x2 = x[1][:].reshape([self.board_size, self.board_size])
+            y_policy = y_policy.reshape([self.board_size, self.board_size])
+            print(x.shape)
+            for i in range(3):
+                x1 = np.rot90(x1)
+                x2 = np.rot90(x2)
+                y_policy = np.rot90(y_policy)
+                newx = np.array([x1, x2])
+                
+                history.append((x, y_policy, y_value))
+
+            x = np.fliplr(x)
+            y_policy = np.fliplr(y_policy)
+            history.append((x, y_policy, y_value))
+
+            for i in range(3):
+                x = np.rot90(x)
+                y_policy = np.rot90(y_policy)
+                history.append((x, y_policy, y_value))
+
+        return history
+
+    def history_row_to_info(self, row:np.ndarray)->Tuple['StoneGameBoard', np.ndarray, float]:
+        x = row[0].reshape(self.board_size, self.board_size)
+        game_board = self.__class__(self.board_size)
+        game_board.self_cells = np.array(x[0]).reshape(game_board.board_size, game_board.board_size)
+        game_board.enemy_cells = np.array(x[1]).reshape(game_board.board_size, game_board.board_size)
+        game_board.turn = np.sum(x[0][:]) + np.sum(x[1][:])
+        y_policy = row[1].reshape(self.board_size, self.board_size)
+        y_value = row[2]
+        return x, y_policy, y_value
     

@@ -53,6 +53,9 @@ class GameBoard:
     @abstractmethod
     def reshape_history_to_input(self, history) -> any:
         pass
+    # hisotryを増やす
+    def augmente_data(self, history) -> any:
+        return history
 
     # 次の状態への遷移
     @abstractmethod

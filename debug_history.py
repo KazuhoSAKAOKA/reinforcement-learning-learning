@@ -20,8 +20,7 @@ def history_view(game_board: StoneGameBoard, history_file: str):
         print('value={}'.format(y_value))
         print("~~~~~~~~~~~~~~~~~~~~~")
 
-def history_save(game_board: StoneGameBoard, history_file: str, save_file: str):
-    history = load_data_file_name(history_file)
+def history_list_save(game_board: StoneGameBoard, history:list, save_file: str):
     with open(save_file, 'w') as f:
         for (x, y_policy, y_value) in history:
             f.write("====== hisotry ======\n")
@@ -34,7 +33,9 @@ def history_save(game_board: StoneGameBoard, history_file: str, save_file: str):
             f.write('value={}\n'.format(y_value))
             f.write("~~~~~~~~~~~~~~~~~~~~~\n")
 
-
+def history_save(game_board: StoneGameBoard, history_file: str, save_file: str):
+    history = load_data_file_name(history_file)
+    history_list_save(game_board, history, save_file)
 
 if __name__ == '__main__':
     game_board = GomokuBoard(9)
