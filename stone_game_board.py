@@ -112,13 +112,11 @@ class StoneGameBoard(GameBoard):
         for x, y_policy, y_value in history:
             x = np.array(x)
             y_policy = np.array(y_policy)
-            print(x.shape)
-            print(y_policy.shape)
 
             x1 = x[0][:].reshape([self.board_size, self.board_size])
             x2 = x[1][:].reshape([self.board_size, self.board_size])
             y_policy = y_policy.reshape([self.board_size, self.board_size])
-            print(x.shape)
+
             for i in range(3):
                 x1 = np.rot90(x1)
                 x2 = np.rot90(x2)
