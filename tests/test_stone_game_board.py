@@ -7,22 +7,23 @@ from debug_history import history_list_save
 
 class TestStoneGameBoard(unittest.TestCase):
     def test_augmente(self):
-        first = TicTacToeBoard(5)
-        param = Parameter(mcts_evaluate_count=100, mcts_expand_limit=10, history_update_type=HistoryUpdateType.zero_to_one)
-        brain = SelfplayRandomMCTSBrain(param)
-        selected_1 = brain.select_action(first)
-        step1, r = first.transit_next(selected_1)
-        self.assertTrue(r)
-        selected_2 = brain.select_action(step1)
-        step2, r = step1.transit_next(selected_2)
-        self.assertTrue(r)
-        selected_3 = brain.select_action(step2)
-        step3, r = step1.transit_next(selected_3)
-        self.assertTrue(r)
+        state = TicTacToeBoard(5)
+        history = []
+        state.self_cells[0][0] = 1
+        state.enemy_cells[0][1] = 1
+        state.self_cells[0][2] = 1
+        state.enemy_cells[0][3] = 1
+        state.self_cells[0][4] = 1
+        state.enemy_cells[1][0] = 1
+        history.append([state.to_hisotry_record(), 
+                        [0.0, 0.0, 0.0, 0.0, 0.0,
+                         0.0, 0.01, 0.02, 0.03, 0.04,
+                         0.05, 0.06, 0.07, 0.08, 0.09,
+                         0.10, 0.11, 0.12, 0.13, 0.14,
+                         0.15, 0.16, 0.17, 0.18, 0.19,
+                         ], 0.5])
 
-        brain.update_history(1.0)
-        history = brain.history
-
-        new_history = first.augmente_data(history.copy())
-        history_list_save(game_board=first, history=new_history, save_file='.tests/historyaugmente_history.txt')
+        new_history = state.augmente_data(history.copy())
+        self.assertEqual(len(new_history), 1 + 7)
+        history_list_save(game_board=state, history=new_history, save_file='./tests/history/augmente_history.txt')
 

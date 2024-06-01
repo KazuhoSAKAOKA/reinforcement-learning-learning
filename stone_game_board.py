@@ -22,7 +22,7 @@ class StoneGameBoard(GameBoard):
         if self.enemy_cells[y][x] == 1:
             return 2 if self.is_first_player_turn() else 1
         return 0
-    def to_hisotry_record(self):
+    def to_hisotry_record(self)->list:
         x = [self.self_cells.reshape(self.board_size*self.board_size,).tolist(), self.enemy_cells.reshape(self.board_size*self.board_size,).tolist()]
         return x
 
@@ -108,7 +108,10 @@ class StoneGameBoard(GameBoard):
         return temp
 
     def augmente_data(self, history) -> any:
+        new_history = history.copy()
         for x, y_policy, y_value in history:
+            x = np.array(x)
+            y_policy = np.array(y_policy)
             print(x.shape)
             print(y_policy.shape)
 
@@ -120,20 +123,24 @@ class StoneGameBoard(GameBoard):
                 x1 = np.rot90(x1)
                 x2 = np.rot90(x2)
                 y_policy = np.rot90(y_policy)
-                newx = np.array([x1, x2])
-                
-                history.append((x, y_policy, y_value))
+                xhis = [x1.reshape(self.board_size*self.board_size,).tolist(), x2.reshape(self.board_size*self.board_size,).tolist()]
+                y_policy_his = y_policy.reshape(self.board_size*self.board_size,).tolist()
+                new_history.append((xhis, y_policy_his, y_value))
 
-            x = np.fliplr(x)
+            x1 = np.fliplr(x1)
+            x2 = np.fliplr(x2)
             y_policy = np.fliplr(y_policy)
-            history.append((x, y_policy, y_value))
-
+            xhis = [x1.reshape(self.board_size*self.board_size,).tolist(), x2.reshape(self.board_size*self.board_size,).tolist()]
+            y_policy_his = y_policy.reshape(self.board_size*self.board_size,).tolist()
+            new_history.append((xhis, y_policy_his, y_value))
             for i in range(3):
-                x = np.rot90(x)
+                x1 = np.rot90(x1)
+                x2 = np.rot90(x2)
                 y_policy = np.rot90(y_policy)
-                history.append((x, y_policy, y_value))
-
-        return history
+                xhis = [x1.reshape(self.board_size*self.board_size,).tolist(), x2.reshape(self.board_size*self.board_size,).tolist()]
+                y_policy_his = y_policy.reshape(self.board_size*self.board_size,).tolist()
+                new_history.append((xhis, y_policy_his, y_value))
+        return new_history
 
     def history_row_to_info(self, row:np.ndarray)->Tuple['StoneGameBoard', np.ndarray, float]:
         x = row[0].reshape(self.board_size, self.board_size)
