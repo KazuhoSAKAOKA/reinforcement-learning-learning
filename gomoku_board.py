@@ -53,9 +53,6 @@ class GomokuBoard(StoneGameBoard):
         # ゲーム開始時は中央にしか打てないため、無視する
         return self.turn == 0
 
-    def to_hisotry_record(self):
-        return np.array([self.self_cells, self.enemy_cells])
-
     def counting_connected(self, judge_cells, other_cells, x, y, dx, dy, to_front, series)->StoneSeries:
         '''
         接続している石の数を数える。

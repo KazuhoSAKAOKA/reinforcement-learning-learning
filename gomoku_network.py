@@ -12,16 +12,14 @@ import pickle
 import os
 from game_board import GameBoard, get_first_player_value
 from gomoku_board import GomokuBoard
-from mcts_node import pv_mcts_scores
 from game import GameEnv, GameStats
 from agent import Agent
 from brains import RandomBrain, ConsoleDebugBrain
 from mini_max import AlphaBetaBrain
 from montecarlo import MonteCarloBrain
-from network_common import judge_stats, train_network, self_play, train_cycle, train_cycle_dualmodel,evaluate_model
-from network_brain import predict,NetworkBrain
+from network_common import train_cycle
 from self_play_brain import HistoryUpdater, ZeroToOneHistoryUpdater
-from parameter import PARAM
+from parameter import NetworkParameter,SelfplayParameter,BrainParameter,ExplorationParameter,NetworkType,HistoryUpdateType,ActionSelectorType, InitSelfplayParameter, judge_stats
 from self_play import self_play_dualmodel, self_play
 from self_play_brain import SelfplayRandomBrain
 from google_colab_helper import google_drive_path
@@ -149,6 +147,75 @@ def dual_network_A(file_best :str, board_size :int, show_summary:bool = False)->
     tf.keras.backend.clear_session()
     return True
 
+def create_network_parameter(board_size : int = 15)->NetworkParameter:
+    return NetworkParameter(
+        best_model_file=get_model_file_best(board_size=board_size), 
+        best_model_file_second=None, 
+        network_type=NetworkType.DualNetwork)
+def create_network_parameter_dual(board_size : int = 15)->NetworkParameter:
+    return NetworkParameter(
+        best_model_file=get_model_file_best_first(board_size=board_size),
+        best_model_file_second=get_model_file_best_second(board_size=board_size), 
+        network_type=NetworkType.DualNetwork)
+
+def create_selfplay_parameter(board_size : int = 15)->SelfplayParameter:
+    return SelfplayParameter(
+        history_folder=get_history_folder_first(board_size=board_size),
+        cycle_count=10,
+        history_folder_second=None,
+        selfplay_repeat=100,
+        start_index=0,
+        evaluate_count=20,
+        eval_judge=judge_stats,
+        train_epoch=200)
+
+def create_selfplay_parameter_dual(board_size : int = 15)->SelfplayParameter:
+    return SelfplayParameter(
+        history_folder=get_history_folder_first(board_size=board_size),
+        cycle_count=10,
+        history_folder_second=get_history_folder_second(board_size=board_size),
+        selfplay_repeat=100,
+        start_index=0,
+        evaluate_count=20,
+        eval_judge=judge_stats,
+        train_epoch=200)
+
+def create_brain_parameter(board_size : int = 15)->BrainParameter:
+    return BrainParameter(
+        mcts_evaluate_count=50,
+        mcts_expand_limit=10,
+        use_cache=True,
+        history_update_type=HistoryUpdateType.zero_to_one,
+        action_selector_type=ActionSelectorType.max)
+
+def create_initial_selfplay_parameter(board_size : int = 15)->InitSelfplayParameter:
+    return InitSelfplayParameter(
+        selfplay_repeat=100,
+        train_epoch=200)
+
+def train_cycle_gomoku(
+                board_size:int,
+                network_param: NetworkParameter,
+                selfplay_param: SelfplayParameter,
+                brain_param: BrainParameter,
+                exploration_param: ExplorationParameter,
+                initial_selfplay_param: SelfplayParameter):
+
+    train_cycle(
+        game_board= GomokuBoard(board_size=board_size),
+        create_model_file=lambda x:dual_network(x, board_size),
+        network_param=network_param,
+        selfplay_param=selfplay_param,
+        brain_param=brain_param,
+        exploration_param=exploration_param,
+        initial_selfplay_param=initial_selfplay_param)
+
+def train_cycle_gomoku_default(board_size=15):
+    pass
+def train_cycle_gomoku_dual_default(board_size=15):
+    pass
+
+'''
 def train_cycle_gomoku(
                 board_size : int = 15,
                 brain_evaluate_count : int = 50,
@@ -273,3 +340,4 @@ def train_cycle_dualmodel_gomoku_gcolab(
         eval_judge=eval_judge,
         use_cache=use_cache)
 
+'''

@@ -307,8 +307,8 @@ class BoltzmanActionSelector(ActionSelector):
         node_index = np.random.choice(len(scores), p=boltzmann(scores, self.temperature))
         return root_node.child_nodes[node_index].get_last_action()
 
-def nodes_to_ratios(activation_space: int, nodes : list[AbstractMctsNode])->np.ndarray:
-    ratios = np.zeros(activation_space, dtype=np.float32)
+def nodes_to_ratios(activation_space: int, nodes : list[AbstractMctsNode])->list[float]:
+    ratios = [0.0] * activation_space
     if len(nodes) == 1:
         ratios[nodes[0].get_last_action()] = 1.0
         return ratios
@@ -348,7 +348,7 @@ class MonteCarloTreeSearcher:
         for _ in range(self.evaluate_count):
             root_node.evaluate()
         return self.action_selector.select_action(root_node)
-    def get_action_rations(self, root_node:MctsNode)->np.ndarray:
+    def get_action_rations(self, root_node:MctsNode)->list[float]:
         return nodes_to_ratios(activation_space=root_node.game_board.get_output_size(),nodes=root_node.child_nodes)
     
 
