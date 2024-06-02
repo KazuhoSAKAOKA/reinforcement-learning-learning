@@ -12,17 +12,15 @@ import pickle
 import os
 from game_board import GameBoard, get_first_player_value
 from tictactoe_board import TicTacToeBoard
-from mcts_node import pv_mcts_scores
 from game import GameEnv, GameStats
 from agent import Agent
 from brains import RandomBrain, ConsoleDebugBrain
 from mini_max import AlphaBetaBrain
 from montecarlo import MonteCarloBrain
-from network_common import judge_stats, train_network, train_cycle, train_cycle_dualmodel, evaluate_model
-from network_brain import predict,NetworkBrain,NetworkBrainFactory
-from parameter import PARAM
-from self_play import write_data, load_data, load_data_file, load_data_file_name
+from network_common import judge_stats, train_network, train_cycle, evaluate_model
+from network_brain import NetworkBrain,NetworkBrainFactory
 from google_colab_helper import google_drive_path
+from parameter import NetworkParameter,SelfplayParameter,BrainParameter,ExplorationParameter,NetworkType,HistoryUpdateType,ActionSelectorType, InitSelfplayParameter
 
 DN_FILTERS = 128
 DN_RESIDUAL_NUM = 16
@@ -100,9 +98,9 @@ def dual_network_past(file_best=MODEL_FILE_BEST):
     K.clear_session()
     del model
 
-def dual_network(path_best=MODEL_FILE_BEST, output_summary: bool = False):
+def dual_network(path_best=MODEL_FILE_BEST, output_summary: bool = False)->bool:
     if os.path.exists(path_best):
-        return
+        return False
     parent = os.path.dirname(path_best)
     os.makedirs(parent, exist_ok=True)
     
@@ -138,6 +136,8 @@ def dual_network(path_best=MODEL_FILE_BEST, output_summary: bool = False):
 
     K.clear_session()
     del model
+    return True
+
 
 def load_data():
     history_path = sorted(Path('./data/tictactoe').glob('*.history'))[-1]
@@ -151,29 +151,159 @@ def convert(xs):
 
     return xs
 
+TICTACTOE_NETWORK_PARAM = NetworkParameter(
+   best_model_file=MODEL_FILE_BEST, 
+   best_model_file_second=None, 
+   network_type=NetworkType.DualNetwork)
+TICTACTOE_NETWORK_PARAM_DUAL = NetworkParameter(
+   best_model_file=MODEL_FILE_BEST_FIRST, 
+   best_model_file_second=MODEL_FILE_BEST_SECOND, 
+   network_type=NetworkType.DualNetwork)
+TICTACTOE_NETWORK_PARAM_GCOLAB = NetworkParameter(
+   best_model_file=get_model_file_best_gcolab(), 
+   best_model_file_second=None, 
+   network_type=NetworkType.DualNetwork)
+TICTACTOE_NETWORK_PARAM_DUAL_GCOLAB = NetworkParameter(
+   best_model_file=get_model_file_first_best_gcolab(), 
+   best_model_file_second=get_model_file_second_best_gcolab(), 
+   network_type=NetworkType.DualNetwork)
+
+
+
+TICTACTOE_SELFPLAY_PARAM = SelfplayParameter(
+    history_folder=HISTORY_FOLDER,
+    cycle_count=10,
+    history_folder_second=None,
+    selfplay_repeat=500,
+    is_continue=False,
+    start_index=0,
+    evaluate_count=50)
+TICTACTOE_SELFPLAY_PARAM_DUAL = SelfplayParameter(
+    history_folder=HISTORY_FOLDER_FIRST,
+    cycle_count=10,
+    history_folder_second=HISTORY_FOLDER_SECOND,
+    selfplay_repeat=500,
+    is_continue=False,
+    start_index=0,
+    evaluate_count=50)
+
+TICTACTOE_SELFPLAY_PARAM_GCOLAB = SelfplayParameter(
+    history_folder=get_history_folder_gcolab(),
+    cycle_count=10,
+    history_folder_second=None,
+    selfplay_repeat=500,
+    is_continue=False,
+    start_index=0,
+    evaluate_count=50)
+TICTACTOE_SELFPLAY_PARAM_DUAL_GCOLAB = SelfplayParameter(
+    history_folder=get_history_folder_first_gcolab(),
+    cycle_count=10,
+    history_folder_second=get_history_folder_second_gcolab(),
+    selfplay_repeat=500,
+    is_continue=False,
+    start_index=0,
+    evaluate_count=50)
+
+
+TICTACTOE_BRAIN_PARAM = BrainParameter(
+    mcts_evaluate_count=50,
+    mcts_expand_limit=10,
+    use_cache=True,
+    history_update_type=HistoryUpdateType.zero_to_one,
+    action_selector_type=ActionSelectorType.max)
+
+TICTACTOE_INIT_TRAIN_PARAM=InitSelfplayParameter(
+    selfplay_repeat=1500,
+    train_epoch=500)
+
+'''               
+best_model_file=MODEL_FILE_BEST,
+history_folder=HISTORY_FOLDER,
+brain_evaluate_count : int = 50,
+selfplay_repeat : int = 500,
+epoch_count : int = 200,
+cycle_count : int = 10,
+eval_count: int = 20,
+eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats,
+use_cache = True,
+initial_selfplay_repeat: int = 1000,
+initial_train_count: int = 500,
+param: Parameter = Parameter(),
+is_continue :bool = False,
+start_index:int = 0): 
+'''
+
 
 
 def train_cycle_tictactoe(
-                brain_evaluate_count : int = 50
-                ,selfplay_repeat : int = 500
-                ,epoch_count : int = 200
-                ,cycle_count : int = 10
-                ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = True):        
-    dual_network(MODEL_FILE_BEST)
+                board_size=3,
+                network_param: NetworkParameter = TICTACTOE_NETWORK_PARAM,
+                selfplay_param: SelfplayParameter=TICTACTOE_SELFPLAY_PARAM,
+                brain_param: BrainParameter=TICTACTOE_BRAIN_PARAM,
+                exploration_param: ExplorationParameter=ExplorationParameter(),
+                initial_selfplay_param: SelfplayParameter = TICTACTOE_INIT_TRAIN_PARAM):
+
     train_cycle(
         game_board= TicTacToeBoard(),
-        brain_evaluate_count= brain_evaluate_count,
-        best_model_file=MODEL_FILE_BEST, 
-        history_folder=HISTORY_FOLDER,
-        selfplay_repeat= selfplay_repeat,
-        epoch_count= epoch_count ,
-        cycle_count=cycle_count,
-        eval_count=eval_count ,
-        eval_judge=eval_judge,
-        use_cache=use_cache)
+        create_model_file=lambda x:dual_network(x),
+        network_param=network_param,
+        selfplay_param=selfplay_param,
+        brain_param=brain_param,
+        exploration_param=exploration_param,
+        initial_selfplay_param=initial_selfplay_param)
 
+def train_cycle_tictactoe_dual(
+                board_size=3,
+                network_param: NetworkParameter = TICTACTOE_NETWORK_PARAM_DUAL,
+                selfplay_param: SelfplayParameter=TICTACTOE_SELFPLAY_PARAM_DUAL,
+                brain_param: BrainParameter=TICTACTOE_BRAIN_PARAM,
+                exploration_param: ExplorationParameter=ExplorationParameter(),
+                initial_selfplay_param: SelfplayParameter = TICTACTOE_INIT_TRAIN_PARAM):
+
+    train_cycle(
+        game_board= TicTacToeBoard(),
+        create_model_file=lambda x:dual_network(x),
+        network_param=network_param,
+        selfplay_param=selfplay_param,
+        brain_param=brain_param,
+        exploration_param=exploration_param,
+        initial_selfplay_param=initial_selfplay_param)
+
+
+def train_cycle_tictactoe_gcolab(
+                board_size=3,
+                network_param: NetworkParameter = TICTACTOE_NETWORK_PARAM_GCOLAB,
+                selfplay_param: SelfplayParameter=TICTACTOE_SELFPLAY_PARAM_GCOLAB,
+                brain_param: BrainParameter=TICTACTOE_BRAIN_PARAM,
+                exploration_param: ExplorationParameter=ExplorationParameter(),
+                initial_selfplay_param: SelfplayParameter = TICTACTOE_INIT_TRAIN_PARAM):
+
+    train_cycle(
+        game_board= TicTacToeBoard(),
+        create_model_file=lambda x:dual_network(x),
+        network_param=network_param,
+        selfplay_param=selfplay_param,
+        brain_param=brain_param,
+        exploration_param=exploration_param,
+        initial_selfplay_param=initial_selfplay_param)
+
+def train_cycle_tictactoe_dual_gcolab(
+                board_size=3,
+                network_param: NetworkParameter = TICTACTOE_NETWORK_PARAM_DUAL_GCOLAB,
+                selfplay_param: SelfplayParameter=TICTACTOE_SELFPLAY_PARAM_DUAL_GCOLAB,
+                brain_param: BrainParameter=TICTACTOE_BRAIN_PARAM,
+                exploration_param: ExplorationParameter=ExplorationParameter(),
+                initial_selfplay_param: SelfplayParameter = TICTACTOE_INIT_TRAIN_PARAM):
+
+    train_cycle(
+        game_board= TicTacToeBoard(),
+        create_model_file=lambda x:dual_network(x),
+        network_param=network_param,
+        selfplay_param=selfplay_param,
+        brain_param=brain_param,
+        exploration_param=exploration_param,
+        initial_selfplay_param=initial_selfplay_param)
+'''
 
 def train_cycle_dualmodel_tictactoe(
                 brain_evaluate_count : int = 50
@@ -198,30 +328,10 @@ def train_cycle_dualmodel_tictactoe(
         eval_count=eval_count ,
         eval_judge=eval_judge,
         use_cache=use_cache)
-
-def train_cycle_tictactoe_gcolab(
-                brain_evaluate_count : int = 50
-                ,selfplay_repeat : int = 500
-                ,epoch_count : int = 200
-                ,cycle_count : int = 10
-                ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache = True):
-    best_file = get_model_file_best_gcolab()         
-    dual_network(best_file)
-    train_cycle(
-        game_board= TicTacToeBoard(),
-        brain_evaluate_count= brain_evaluate_count,
-        best_model_file=best_file, 
-        history_folder=get_history_folder_gcolab(),
-        selfplay_repeat= selfplay_repeat,
-        epoch_count= epoch_count ,
-        cycle_count=cycle_count,
-        eval_count=eval_count ,
-        eval_judge=eval_judge,
-        use_cache=use_cache)
+'''
 
 
+'''
 def train_cycle_dualmodel_tictactoe_gcolab(
                 brain_evaluate_count : int = 50
                 ,selfplay_repeat : int = 500
@@ -248,3 +358,4 @@ def train_cycle_dualmodel_tictactoe_gcolab(
         eval_count=eval_count ,
         eval_judge=eval_judge,
         use_cache=use_cache)
+'''

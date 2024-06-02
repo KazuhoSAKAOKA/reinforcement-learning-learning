@@ -1,5 +1,5 @@
 from game_board import GameBoard
-from parameter import Parameter,HistoryUpdateType
+from parameter import BrainParameter,HistoryUpdateType
 import numpy as np
 from brains import Brain
 from mcts_node import RandomMctsNode,MonteCarloTreeSearcher,MaxActionSelector
@@ -28,20 +28,20 @@ class ZeroToOneHistoryUpdater(HistoryUpdater):
 
 
 class HistoryUpdaterFactory:
-    def create_history_updater(param:Parameter)->HistoryUpdater:
-        if param.history_update_type == HistoryUpdateType.constants:
+    def create_history_updater(brain_param:BrainParameter)->HistoryUpdater:
+        if brain_param.history_update_type == HistoryUpdateType.constants:
             return HistoryUpdater()
-        elif param.history_update_type == HistoryUpdateType.discount_gamma:
+        elif brain_param.history_update_type == HistoryUpdateType.discount_gamma:
             return DiscountRateHistoryUpdater(param.gamma)
-        elif param.history_update_type == HistoryUpdateType.zero_to_one:
+        elif brain_param.history_update_type == HistoryUpdateType.zero_to_one:
             return ZeroToOneHistoryUpdater()
         Exception('Unknown type')
 
 class SelfplayBrain(Brain):
-    def __init__(self, param:Parameter):
+    def __init__(self, brain_param:BrainParameter):
         super().__init__()
         self.history = []
-        self.history_updater = HistoryUpdaterFactory.create_history_updater(param)
+        self.history_updater = HistoryUpdaterFactory.create_history_updater(brain_param)
     def get_name(self):
         return "SelfplayBrain"
     def register_policies(self, game_board : GameBoard, policies: list):
@@ -54,8 +54,8 @@ class SelfplayBrain(Brain):
 
 
 class SelfplayRandomBrain(SelfplayBrain):
-    def __init__(self, param:Parameter):
-        super().__init__(param=param)
+    def __init__(self, brain_param:BrainParameter):
+        super().__init__(brain_param=brain_param)
     def get_name(self):
         return "SelfplayRandomBrain"
     def select_action(self, board : GameBoard)->int:
@@ -74,10 +74,10 @@ class SelfplayRandomBrain(SelfplayBrain):
 
 
 class SelfplayRandomMCTSBrain(SelfplayBrain):
-    def __init__(self, param:Parameter):
-        super().__init__(param=param)
-        self.mcts = MonteCarloTreeSearcher(evaluate_count=param.mcts_evaluate_count, action_selector=MaxActionSelector())
-        self.mcts_expand_limit = param.mcts_expand_limit
+    def __init__(self, brain_param:BrainParameter):
+        super().__init__(brain_param=brain_param)
+        self.mcts = MonteCarloTreeSearcher(brain_param=brain_param)
+        self.mcts_expand_limit = brain_param.mcts_expand_limit
     def get_name(self):
         return "SelfplayRandomMCTSBrain"
     def select_action(self, game_board : GameBoard)->int:

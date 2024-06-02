@@ -2,7 +2,6 @@ import unittest
 from game_board import GameBoard, GameRelativeResult
 from tictactoe_board import TicTacToeBoard
 from self_play_brain import SelfplayRandomMCTSBrain
-from parameter import Parameter, HistoryUpdateType
 from debug_history import history_list_save
 
 class TestStoneGameBoard(unittest.TestCase):

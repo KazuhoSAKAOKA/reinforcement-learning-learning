@@ -7,14 +7,14 @@ from typing import Callable, Tuple
 from game_board import GameBoard, GameRelativeResult
 from math import sqrt
 import numpy as np
-from parameter import Parameter, NetworkType
+from parameter import BrainParameter, NetworkType,ActionSelectorType, ExplorationParameter
 from predictor import Prediction, DualNetworkPrediction, PolicyNetworkPrediction, Predictor
 from montecarlo import playout
 from logging import getLogger, DEBUG
 logger = getLogger(__name__)
 
 # ボルツマン分布
-def boltzman(xs, temperature):
+def boltzmann(xs, temperature):
     xs = [x ** (1 / temperature) for x in xs]
     total = sum(xs)
     if total == 0:
@@ -251,6 +251,7 @@ class PolicyValueNetworkMctsNode(MctsNode):
         self.predictor_alpha = predictor_alpha
         self.predictor_beta = predictor_beta
         self.policy :float= policy # 方策
+        self.policies = None
     def is_expandable(self)->bool:
         return True
     
@@ -299,9 +300,11 @@ class RandomChoiceActionSelector(ActionSelector):
         return root_node.child_nodes[node_index].get_last_action()
 
 class BoltzmanActionSelector(ActionSelector):
+    def __init__(self, exploration_param: ExplorationParameter):
+        self.temperature = exploration_param.temperature
     def select_action(self, root_node:MctsNode)->int:
         scores = nodes_to_scores(root_node.child_nodes)
-        node_index = np.random.choice(len(scores), p=boltzman(scores, root_node.parameter.temperature))
+        node_index = np.random.choice(len(scores), p=boltzmann(scores, self.temperature))
         return root_node.child_nodes[node_index].get_last_action()
 
 def nodes_to_ratios(activation_space: int, nodes : list[AbstractMctsNode])->np.ndarray:
@@ -310,10 +313,22 @@ def nodes_to_ratios(activation_space: int, nodes : list[AbstractMctsNode])->np.n
     for node in nodes:
         ratios[node.get_last_action()] = node.get_selected_count() / t
     return ratios
+
+class ActionSelectorFactory:
+    @staticmethod
+    def create_action_selector(action_selector_type: ActionSelectorType, exploration_param: ExplorationParameter)->ActionSelector:
+        if action_selector_type == ActionSelectorType.max:
+            return MaxActionSelector()
+        elif action_selector_type == ActionSelectorType.random:
+            return RandomChoiceActionSelector()
+        elif action_selector_type == ActionSelectorType.boltzmann:
+            return BoltzmanActionSelector(exploration_param=exploration_param)
+        raise Exception('Unknown type')
+
 class MonteCarloTreeSearcher:
-    def __init__(self, evaluate_count :int, action_selector: ActionSelector):
-        self.evaluate_count = evaluate_count
-        self.action_selector = action_selector
+    def __init__(self, brain_param: BrainParameter):
+        self.evaluate_count = brain_param.mcts_evaluate_count
+        self.action_selector = ActionSelectorFactory.create_action_selector(brain_param.action_selector_type, exploration_param=ExplorationParameter())
     def __call__(self, root_node:MctsNode)->int:
         return self.execute(root_node=root_node)
     def execute(self, root_node:MctsNode)->int:

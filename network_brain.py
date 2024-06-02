@@ -3,11 +3,12 @@ import numpy as np
 from tensorflow.keras.models import Model
 from brains import Brain
 from game_board import GameBoard
-from self_play_brain import SelfplayBrain, HistoryUpdater
+from self_play_brain import SelfplayBrain, HistoryUpdater,HistoryUpdaterFactory
 from threadsafe_dict import ThreadSafeDict
-from parameter import PARAM
+from parameter import BrainParameter,ExplorationParameter
 from predictor import Predictor
-
+from mcts_node import MonteCarloTreeSearcher, PolicyValueNetworkMctsNode,RandomChoiceActionSelector,PolicyUCTNextNodeSelector,WithDirichletPolicyUCTNextNodeSelector
+'''
 class NetworkMonteCarloTreeSearcher:
     def __init__(self, evaluate_count : int, model: Model, ts_dict : ThreadSafeDict):
         self.evaluate_count = evaluate_count
@@ -32,7 +33,6 @@ class DualModelNetworkMonteCarloTreeSearcher(NetworkMonteCarloTreeSearcher):
         return policies
     def __str__(self) -> str:
         return 'DualModel MCTS (evaluate_count={})'.format(self.evaluate_count)
-
 class PolicySelector:
     def __call__(self, policies:np.ndarray)->int:
         return np.argmax(policies)
@@ -51,43 +51,86 @@ class BoltmanPolicySelector:
         return np.random.choice(a=len(policies), p=policies)
     def __str__(self) -> str:
         return 'random choice selector(boltzman)'
+'''
     
 class NetworkBrain(Brain):
-    def __init__(self, network_mcts: NetworkMonteCarloTreeSearcher, policy_selector : PolicySelector):
+    def __init__(self, 
+                predictor_first : Predictor,
+                predictor_second : Predictor,
+                brain_param:BrainParameter,
+                exploration_param:ExplorationParameter):
         super().__init__()
-        self.network_mcts = network_mcts
-        self.policy_selector = policy_selector
+        self.mcts = MonteCarloTreeSearcher(brain_param=brain_param)
+        self.predictor_first = predictor_first
+        self.predictor_second = predictor_second
         self.last_policies = None
         self.last_action = None
+        self.node_selector = PolicyUCTNextNodeSelector(c_base=exploration_param.c_base, c_init=exploration_param.c_init)
     def get_name(self):
         return 'NetworkBrain MCTS={0} selector={1}'.format(self.network_mcts, self.policy_selector)
     def select_action(self, game_board:GameBoard)->int:
-        policies = self.network_mcts(game_board=game_board)
+        if game_board.is_first_player_turn():
+            alpha = self.predictor_first
+            beta = self.predictor_second
+        else:
+            alpha = self.predictor_second
+            beta = self.predictor_first
+        root_node = PolicyValueNetworkMctsNode(
+                game_board=game_board,
+                is_root=True,
+                predictor_alpha=alpha,
+                predictor_beta=beta,
+                policy=0.0,
+                node_selector=self.node_selector,
+                child_node_selector=self.node_selector)
+        selected = self.mcts(root_node=root_node)
+        policies = self.mcts.get_action_rations(root_node=root_node)
         self.last_policies = policies
-        action = self.policy_selector(policies=policies)
-        self.last_action = action
-        return action
+        self.last_action = selected
+        return selected
     def get_last_policies(self):
         return self.last_policies
     def get_last_action(self):
         return self.last_action
 
 class SelfplayNetworkBrain(SelfplayBrain):
-    def __init__(self, network_mcts: NetworkMonteCarloTreeSearcher, policy_selector : PolicySelector, history_updater:HistoryUpdater):
-        super().__init__(history_updater=history_updater)
-        self.network_mcts = network_mcts
-        self.policy_selector = policy_selector
+    def __init__(self,
+                predictor_first : Predictor,
+                predictor_second : Predictor,
+                brain_param:BrainParameter,
+                exploration_param:ExplorationParameter):
+        super().__init__(brain_param=brain_param)
+        self.mcts = MonteCarloTreeSearcher(brain_param=brain_param)
+        self.predictor_first = predictor_first
+        self.predictor_second = predictor_second
         self.last_policies = None
         self.last_action = None
+        self.root_node_selector = WithDirichletPolicyUCTNextNodeSelector(c_base=exploration_param.c_base, c_init=exploration_param.c_init, alpha=exploration_param.alpha, epsilon=exploration_param.epsilon)
+        self.child_node_selector = PolicyUCTNextNodeSelector(c_base=exploration_param.c_base, c_init=exploration_param.c_init)
     def get_name(self):
         return 'SelfplayNetworkBrain MCTS={0} selector={1}'.format(self.network_mcts, self.policy_selector)
     def select_action(self, game_board : GameBoard)->int:
-        policies = self.network_mcts(game_board=game_board)
+        if game_board.is_first_player_turn():
+            alpha = self.predictor_first
+            beta = self.predictor_second
+        else:
+            alpha = self.predictor_second
+            beta = self.predictor_first
+        root_node = PolicyValueNetworkMctsNode(
+                game_board=game_board,
+                is_root=True,
+                predictor_alpha=alpha,
+                predictor_beta=beta,
+                policy=0.0,
+                node_selector=self.root_node_selector,
+                child_node_selector=self.child_node_selector)
+        selected = self.mcts(root_node=root_node)
+        policies = self.mcts.get_action_rations(root_node=root_node)
         self.last_policies = policies
         self.register_policies(game_board=game_board, policies=policies)
-        action = self.policy_selector(policies=policies)
-        self.last_action = action
-        return action
+        self.last_action = selected
+        return selected
+    
     def get_last_policies(self):
         return self.last_policies
     def get_last_action(self):
@@ -96,24 +139,30 @@ class SelfplayNetworkBrain(SelfplayBrain):
 
 class NetworkBrainFactory:
     @staticmethod
-    def create_network_brain(evaluate_count : int, model: Model, ts_dict : ThreadSafeDict)->NetworkBrain:
+    def create_network_brain(predictor : Predictor, brain_param: BrainParameter, exploration_param:ExplorationParameter)->NetworkBrain:
         return NetworkBrain(
-            network_mcts=NetworkMonteCarloTreeSearcher(evaluate_count=evaluate_count, model=model, ts_dict=ts_dict),
-            policy_selector=PolicySelector())
-    def create_dualmodel_network_brain(evaluate_count : int, first_model: Model, second_model: Model, ts_dict : ThreadSafeDict)->NetworkBrain:
+                predictor_first=predictor,
+                predictor_second=predictor,
+                brain_param=brain_param,
+                exploration_param=exploration_param)
+    def create_dualmodel_network_brain(predictor_first : Predictor, predictor_second : Predictor, brain_param: BrainParameter, exploration_param:ExplorationParameter)->NetworkBrain:
         return NetworkBrain(
-            network_mcts=DualModelNetworkMonteCarloTreeSearcher(evaluate_count=evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict),
-            policy_selector=PolicySelector())
-    def create_selfplay_network_brain(evaluate_count : int, model: Model, ts_dict : ThreadSafeDict, history_updater:HistoryUpdater)->SelfplayNetworkBrain:
+                predictor_first=predictor_first,
+                predictor_second=predictor_second,
+                brain_param=brain_param,
+                exploration_param=exploration_param)
+    def create_selfplay_network_brain(predictor : Predictor, brain_param: BrainParameter, exploration_param:ExplorationParameter)->SelfplayNetworkBrain:
         return SelfplayNetworkBrain(
-            network_mcts=NetworkMonteCarloTreeSearcher(evaluate_count=evaluate_count, model=model, ts_dict=ts_dict),
-            policy_selector=SelfplayPolicySelector(),
-            history_updater=history_updater)
-    def create_selfplay_dualmodel_network_brain(evaluate_count : int, first_model: Model, second_model: Model, ts_dict : ThreadSafeDict, history_updater:HistoryUpdater)->SelfplayNetworkBrain:
+                predictor_first=predictor,
+                predictor_second=predictor,
+                brain_param=brain_param,
+                exploration_param=exploration_param)
+    def create_selfplay_dualmodel_network_brain(predictor_first : Predictor, predictor_second : Predictor, brain_param: BrainParameter, exploration_param:ExplorationParameter)->SelfplayNetworkBrain:
         return SelfplayNetworkBrain(
-            network_mcts=DualModelNetworkMonteCarloTreeSearcher(evaluate_count=evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict),
-            policy_selector=SelfplayPolicySelector(),
-            history_updater=history_updater)
+                predictor_first=predictor_first,
+                predictor_second=predictor_second,
+                brain_param=brain_param,
+                exploration_param=exploration_param)
 
 '''
 class DualModelNetworkBrain(Brain):

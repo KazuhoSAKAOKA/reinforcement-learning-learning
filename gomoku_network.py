@@ -77,7 +77,7 @@ def residual_block():
         return x
     return f
 
-def dual_network_1(file_best :str, board_size :int, show_summary:bool = False)->bool:
+def dual_network(file_best :str, board_size :int, show_summary:bool = False)->bool:
     if os.path.exists(file_best):
         return False
     parent = os.path.dirname(file_best)
@@ -116,7 +116,7 @@ def dual_network_1(file_best :str, board_size :int, show_summary:bool = False)->
     return True
 
 
-def dual_network(file_best :str, board_size :int, show_summary:bool = False)->bool:
+def dual_network_A(file_best :str, board_size :int, show_summary:bool = False)->bool:
     if os.path.exists(file_best):
         return False
     parent = os.path.dirname(file_best)

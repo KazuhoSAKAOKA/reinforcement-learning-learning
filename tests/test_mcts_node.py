@@ -7,7 +7,7 @@ from game_board import GameBoard,GameRelativeResult
 from tictactoe_board import TicTacToeBoard
 from mcts_node import AbstractMctsNode, MctsNode,RandomMctsNode,PolicyValueNetworkMctsNode,UCB1NextNodeSelector,PolicyUCTNextNodeSelector,WithDirichletPolicyUCTNextNodeSelector
 from predictor import Predictor,Prediction,DualNetworkPrediction,PolicyNetworkPrediction
-from parameter import Parameter
+from parameter import ExplorationParameter
 from threadsafe_dict import ThreadSafeDict
 
 import numpy as np

@@ -27,6 +27,16 @@ class GameStats:
         self.draw = draw
     def __repr__(self) -> str:
         return "First player win: {0}, Second player win: {1}, Draw: {2}".format(self.first_player_win, self.second_player_win, self.draw)
+
+
+def judge_stats(stats: Tuple[GameStats, GameStats])->bool:
+    current, best = stats
+    if current.first_player_win > best.first_player_win:
+        return True
+    if current.first_player_win == best.first_player_win and current.draw > best.draw:
+        return True
+    return False
+
 class GameEnv:
     def __init__(self, game_board : GameBoard, first_agent : Agent, second_agent : Agent , prev_action_callback :Callable[[GameBoard], None] = do_empty1, selected_action_callback : Callable[[GameBoard, int],None]= do_empty2, episode_callback : Callable[[int, GameBoard, GameResult], None] = do_empty3):
         self.game_board = game_board
