@@ -3,7 +3,7 @@ import numpy as np
 from game_board import GameBoard
 from stone_game_board import StoneGameBoard
 from gomoku_board import GomokuBoard
-
+from tictactoe_board import TicTacToeBoard
 from network_common import load_data_file_name
 
 
@@ -38,9 +38,7 @@ def history_save(game_board: StoneGameBoard, history_file: str, save_file: str):
     history_list_save(game_board, history, save_file)
 
 if __name__ == '__main__':
-    game_board = GomokuBoard(9)
+    game_board = TicTacToeBoard()
     #history_save(GomokuBoard(11), './data/gomoku_11/first/20240511082326.history', 'first_history.txt')
     #history_save(GomokuBoard(11), './data/gomoku_11/second/20240511082326.history', 'second_history.txt')
-
-    history_save(game_board, './data/gomoku_9/first/20240515051822.history', 'first_history.txt')
-    history_save(game_board, './data/gomoku_9/second/20240515051822.history', 'second_history.txt')
+    history_save(game_board, '/home/kazuho/python/reinforcement-learning-learning/test_files/tictactoe_network/20240602153945.history', 'test_history.txt')

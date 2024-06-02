@@ -309,9 +309,12 @@ class BoltzmanActionSelector(ActionSelector):
 
 def nodes_to_ratios(activation_space: int, nodes : list[AbstractMctsNode])->np.ndarray:
     ratios = np.zeros(activation_space, dtype=np.float32)
+    if len(nodes) == 1:
+        ratios[nodes[0].get_last_action()] = 1.0
+        return ratios
     t = sum(nodes_to_scores(nodes))
     for node in nodes:
-        ratios[node.get_last_action()] = node.get_selected_count() / t
+        ratios[node.get_last_action()] = float(node.get_selected_count()) / float(t)
     return ratios
 
 class ActionSelectorFactory:

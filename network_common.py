@@ -37,6 +37,13 @@ def train_network(
     history = load_data_file_name(history_file)
     xs, y_policies, y_values = game_board.reshape_history_to_input(history)
 
+
+#    for p in y_policies:
+#        for q in p:
+#            if np.isnan(q):
+#                print('train data nan!' )
+
+
     def step_decay(epoch):
         x = 0.001
         if epoch >= 50: x = 0.0005
@@ -203,16 +210,17 @@ def train_cycle(
 
         # selfplay brainはhistoryデータを各ブレインで持っているので先手後手で異なるインスタンスを使う
         first_model = tf.keras.models.load_model(network_param.best_model_file)
+
         if is_dual:
             second_model = tf.keras.models.load_model(network_param.best_model_file_second)
             predictor_first = DualNetworkPredictor(model=first_model, ts_dict=ts_dict)
             predictor_second = DualNetworkPredictor(model=second_model, ts_dict=ts_dict)
-            first_brain = NetworkBrainFactory.create_selfplay_network_brain(
+            first_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(
                     predictor_first= predictor_first,
                     predictor_second= predictor_second,
                     brain_param=brain_param,
                     exploration_param=exploration_param)
-            second_brain = NetworkBrainFactory.create_selfplay_network_brain(
+            second_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(
                     predictor_first= predictor_first,
                     predictor_second= predictor_second,
                     brain_param=brain_param,

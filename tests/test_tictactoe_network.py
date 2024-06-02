@@ -15,6 +15,14 @@ def init_test_folder():
     os.makedirs(TEST_FOLDER)
 
 class TestTicTacToeNetwork(unittest.TestCase):
+#    def test_model_1(self):
+#        test_model_file = TEST_FOLDER + 'model_best.keras'
+#        model = tf.keras.models.load_model(test_model_file)
+#        game_board = TicTacToeBoard(3)
+#        x = game_board.reshape_to_input()
+#        y = model.predict(x)
+#        print(y)
+
     def test_model_simple(self):
         init_test_folder()
         test_model_file = TEST_FOLDER + 'model_best.keras'
@@ -51,25 +59,32 @@ class TestTicTacToeNetwork(unittest.TestCase):
                 network_param=test_network_param,
                 brain_param=test_brain_param,
                 selfplay_param=test_selfplay_param,
-                initial_selfplay_param=None,
+                initial_selfplay_param=test_init_selfplay_param,
                 exploration_param=ExplorationParameter())
                
     def test_train_network_dual(self):
         init_test_folder()
-        test_model_file = TEST_FOLDER + 'model_best.keras'
+        test_model_first_file = TEST_FOLDER + '/first/model_best_first.keras'
+        test_model_second_file = TEST_FOLDER + '/second/model_best_second.keras'
+        test_network_param = copy.copy(TICTACTOE_NETWORK_PARAM_DUAL)
+        test_network_param.best_model_file = test_model_first_file
+        test_network_param.best_model_file_second = test_model_second_file
+        test_brain_param = copy.copy(TICTACTOE_BRAIN_PARAM)
+        test_brain_param.mcts_evaluate_count = 5
+        test_brain_param.mcts_expand_limit = 2
+        test_selfplay_param = copy.copy(TICTACTOE_SELFPLAY_PARAM_DUAL)
+        test_selfplay_param.history_folder = TEST_FOLDER + '/first'
+        test_selfplay_param.history_folder_second = TEST_FOLDER + '/second'
+        test_selfplay_param.selfplay_repeat = 10
+        test_selfplay_param.cycle_count = 2
+        test_selfplay_param.evaluate_count = 5
+        test_selfplay_param.train_epoch = 5
+        test_init_selfplay_param = copy.copy(TICTACTOE_INIT_TRAIN_PARAM)
+        test_init_selfplay_param.selfplay_repeat = 10
+        test_init_selfplay_param.train_epoch = 5
         train_cycle_tictactoe(
-                board_size=3,
-                best_model_file=test_model_file,
-                history_folder=TEST_FOLDER,
-                brain_evaluate_count=10,
-                selfplay_repeat = 10,
-                epoch_count = 5,
-                cycle_count = 2,
-                eval_count = 5,
-                eval_judge = lambda x: True,
-                use_cache = True,
-                initial_selfplay_repeat = 10,
-                initial_train_count = 10,
-                param = Parameter(),
-                is_continue = False,
-                start_index = 0)
+                network_param=test_network_param,
+                brain_param=test_brain_param,
+                selfplay_param=test_selfplay_param,
+                initial_selfplay_param=test_init_selfplay_param,
+                exploration_param=ExplorationParameter())

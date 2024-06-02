@@ -64,6 +64,7 @@ class DualNetworkPredictor(Predictor):
         policies /= np.sum(policies) if np.sum(policies) else 1 # 合計1の確率分布に変換
         # 価値の取得
         value = y[1][0][0]
+
         return DualNetworkPrediction(policies, value)
 
 class PolicyNetworkPredictor(Predictor):

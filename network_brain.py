@@ -67,7 +67,7 @@ class NetworkBrain(Brain):
         self.last_action = None
         self.node_selector = PolicyUCTNextNodeSelector(c_base=exploration_param.c_base, c_init=exploration_param.c_init)
     def get_name(self):
-        return 'NetworkBrain MCTS={0} selector={1}'.format(self.network_mcts, self.policy_selector)
+        return 'NetworkBrain ' # todo
     def select_action(self, game_board:GameBoard)->int:
         if game_board.is_first_player_turn():
             alpha = self.predictor_first
