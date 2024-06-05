@@ -23,20 +23,19 @@ from network_brain import NetworkBrain, SelfplayNetworkBrain, NetworkBrainFactor
 from threadsafe_dict import ThreadSafeDict
 from self_play import self_play_impl, load_data_file_name
 from predictor import DualNetworkPredictor 
-
+from self_play import HistoryData
 
 
 def train_network(
         load_model_path : str, 
-        history_file : str, 
+        history_data : HistoryData, 
         game_board : GameBoard, 
         epoch_count : int)->Tuple[Model, str]:
 
     model = tf.keras.models.load_model(load_model_path)
-
-    history = load_data_file_name(history_file)
+    history = history_data.deserialize()
+    history = game_board.augmente_data(history)
     xs, y_policies, y_values = game_board.reshape_history_to_input(history)
-
 
 #    for p in y_policies:
 #        for q in p:
@@ -100,17 +99,17 @@ def initial_train(
     temp_param = copy.copy(selfplay_param)
     temp_param.selfplay_repeat = initial_selfplay_param.selfplay_repeat
     temp_param.train_epoch = initial_selfplay_param.train_epoch
-    history_files = self_play_impl(
+    history_data = self_play_impl(
         first_brain=SelfplayRandomMCTSBrain(brain_param=brain_param),
         second_brain= SelfplayRandomMCTSBrain(brain_param=brain_param),
         game_board=game_board,
         selfplay_param=temp_param)
     print('initial selfplay completed. begin train')
 
-    future_first = executor.submit(lambda: train_network(network_param.best_model_file, history_files[0], game_board, initial_selfplay_param.train_epoch))
+    future_first = executor.submit(lambda: train_network(network_param.best_model_file, history_data.get_primary(), game_board, initial_selfplay_param.train_epoch))
     is_dual = network_param.best_model_file_second is not None
     if is_dual:
-        future_second = executor.submit(lambda: train_network(network_param.best_model_file_second, history_files[1], game_board, selfplay_param.train_epoch))
+        future_second = executor.submit(lambda: train_network(network_param.best_model_file_second, history_data.get_secondary(), game_board, selfplay_param.train_epoch))
     else:
         future_second = None
     latest_first_model, latest_file_name_first = future_first.result()
@@ -237,11 +236,11 @@ def train_cycle(
                     brain_param=brain_param,
                     exploration_param=exploration_param)
             
-        history_files = self_play_impl(first_brain=first_brain, second_brain=second_brain, game_board=game_board, selfplay_param=selfplay_param)
+        history_data = self_play_impl(first_brain=first_brain, second_brain=second_brain, game_board=game_board, selfplay_param=selfplay_param)
 
-        future_first = executor.submit(lambda: train_network(network_param.best_model_file, history_files[0], game_board, selfplay_param.train_epoch))
+        future_first = executor.submit(lambda: train_network(network_param.best_model_file, history_data.get_primary(), game_board, selfplay_param.train_epoch))
         if is_dual:
-            future_second = executor.submit(lambda: train_network(network_param.best_model_file_second, history_files[1], game_board, selfplay_param.train_epoch))
+            future_second = executor.submit(lambda: train_network(network_param.best_model_file_second, history_data.get_secondary(), game_board, selfplay_param.train_epoch))
 
         latest_first_model, latest_file_name_first = future_first.result()
         if is_dual:

@@ -30,8 +30,8 @@ DN_OUTPUT_SIZE = 9
 MODEL_FILE_BEST = './model/tictactoe/best.keras'
 HISTORY_FOLDER = './data/tictactoe'
 
-MODEL_FILE_BEST_FIRST = './model/tictactoe/first/best.keras'
-MODEL_FILE_BEST_SECOND = './model/tictactoe/second/best.keras'
+MODEL_FILE_BEST_FIRST = './model/tictactoe/first/best_first.keras'
+MODEL_FILE_BEST_SECOND = './model/tictactoe/second/best_second.keras'
 HISTORY_FOLDER_FIRST = './data/tictactoe/first'
 HISTORY_FOLDER_SECOND = './data/tictactoe/second'
 

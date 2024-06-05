@@ -49,12 +49,12 @@ def get_history_folder_gcolab(board_size: int=15)->str:
 
 
 def get_model_file_first_best_gcolab(board_size: int=15)->str:
-  return google_drive_path + 'model/gomoku_{0}/first/best.keras'.format(board_size)
+  return google_drive_path + 'model/gomoku_{0}/first/best_first.keras'.format(board_size)
 def get_history_folder_first_gcolab(board_size: int=15)->str:
   return google_drive_path + 'history/gomoku_{0}/first'.format(board_size)
 
 def get_model_file_second_best_gcolab(board_size: int=15)->str:
-  return google_drive_path + 'model/gomoku_{0}/second/best.keras'.format(board_size)
+  return google_drive_path + 'model/gomoku_{0}/second/best_second.keras'.format(board_size)
 def get_history_folder_second_gcolab(board_size: int=15)->str:
   return google_drive_path + 'history/gomoku_{0}/second'.format(board_size)
 
