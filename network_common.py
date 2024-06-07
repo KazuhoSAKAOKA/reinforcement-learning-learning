@@ -21,13 +21,40 @@ from typing import Tuple
 from self_play_brain import SelfplayRandomMCTSBrain
 from network_brain import NetworkBrain, SelfplayNetworkBrain, NetworkBrainFactory
 from threadsafe_dict import ThreadSafeDict
-from self_play import self_play_impl, load_data_file_name
+from self_play import self_play_impl
 from predictor import DualNetworkPredictor 
 from self_play import HistoryData
 
+'''
+model file フォルダ構成
+./model/
+    game_name/
+        yyyyMMddHHmmss/     # 処理開始
+            gen0000.keras   # 0世代目
+        best.keras          # 最新のモデル
+        best_first.keras    # 先行と後攻のモデルが別の場合の最新のモデル
+        best_second.keras   # 先行と後攻のモデルが別の場合の最新のモデル 
+'''
+
+BEST_MODEL_FILE = 'best.keras'
+
+BEST_FIRST_PLAYER_MODEL_FILE = 'best_first.keras'
+BEST_SECOND_PLAYER_MODEL_FILE = 'best_second.keras'
+
+def try_crate_model_file(model_file: str, create_model: Callable[[],Model])->bool:
+    if os.path.exists(model_file):
+        return False
+    model = create_model()
+    model.save(model_file)
+    del model
+    tf.keras.backend.clear_session()
+    return True
 
 def train_network(
         load_model_path : str, 
+        train_model_folder : str,
+        generation : int,
+        model_file_postfix : str,
         history_data : HistoryData, 
         game_board : GameBoard, 
         epoch_count : int)->Tuple[Model, str]:
@@ -41,8 +68,6 @@ def train_network(
 #        for q in p:
 #            if np.isnan(q):
 #                print('train data nan!' )
-
-
     def step_decay(epoch):
         x = 0.001
         if epoch >= 50: x = 0.0005
@@ -54,12 +79,11 @@ def train_network(
 
     model.fit(xs, [y_policies, y_values], batch_size=128, epochs=epoch_count, 
               verbose=0, callbacks=[lr_decay, print_callback])
-
-    print('\rcomplete. train')
-    now = datetime.now()
-    save_path = os.path.dirname(load_model_path) + '/{:04}{:02}{:02}{:02}{:02}{:02}.keras'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
-    
-    #f.saved_model.save(model, save_path)
+    if model_file_postfix is None:
+        save_path = train_model_folder + '/gen{:04}.keras'.format(generation)
+    else:
+        save_path = train_model_folder + '/gen{:04}_{}.keras'.format(generation, model_file_postfix)
+    print('\rcomplete. train file={}'.format(save_path))
     model.save(save_path)
     return model, save_path
 
@@ -88,13 +112,26 @@ def evaluate_model(
         future_second = executor.submit(lambda: execute(agent_base, agent_target, game_board, play_count))
         return future_first.result(), future_second.result()
 
+def create_best_model_file_path(network_param: NetworkParameter)->Tuple[str,str]:
+    os.makedirs(network_param.model_folder, exist_ok=True)
+    best_model_file:str
+    best_model_file_second:str
+    if network_param.is_dual_model:
+        best_model_file = network_param.model_folder +'/' + BEST_FIRST_PLAYER_MODEL_FILE
+        best_model_file_second = network_param.model_folder +'/' + BEST_SECOND_PLAYER_MODEL_FILE
+    else:
+        best_model_file = network_param.model_folder +'/' + BEST_MODEL_FILE
+        best_model_file_second = None
+    return best_model_file, best_model_file_second
+
 def initial_train(
             game_board: GameBoard,
             network_param: NetworkParameter,
             selfplay_param: SelfplayParameter,
             brain_param: BrainParameter,
             initial_selfplay_param:InitSelfplayParameter,
-            executor: concurrent.futures.ThreadPoolExecutor):
+            executor: concurrent.futures.ThreadPoolExecutor,
+            train_model_folder : str):
     print('initial selfplay and train')
     temp_param = copy.copy(selfplay_param)
     temp_param.selfplay_repeat = initial_selfplay_param.selfplay_repeat
@@ -103,91 +140,88 @@ def initial_train(
         first_brain=SelfplayRandomMCTSBrain(brain_param=brain_param),
         second_brain= SelfplayRandomMCTSBrain(brain_param=brain_param),
         game_board=game_board,
+        is_dual_model=network_param.is_dual_model,
         selfplay_param=temp_param)
     print('initial selfplay completed. begin train')
+    best_model_file, best_model_file_second = create_best_model_file_path(network_param)
 
-    future_first = executor.submit(lambda: train_network(network_param.best_model_file, history_data.get_primary(), game_board, initial_selfplay_param.train_epoch))
-    is_dual = network_param.best_model_file_second is not None
-    if is_dual:
-        future_second = executor.submit(lambda: train_network(network_param.best_model_file_second, history_data.get_secondary(), game_board, selfplay_param.train_epoch))
+    if network_param.is_dual_model:
+        future_first = executor.submit(lambda: train_network(
+            load_model_path=best_model_file,
+            train_model_folder=train_model_folder,
+            generation=0,
+            model_file_postfix='first',
+            history_data=history_data.get_primary(),
+            game_board=game_board,
+            epoch_count=initial_selfplay_param.train_epoch))
+        future_second = executor.submit(lambda: train_network(
+            load_model_path=best_model_file,
+            train_model_folder=train_model_folder,
+            generation=0,
+            model_file_postfix='second',
+            history_data=history_data.get_secondary(),
+            game_board=game_board,
+            epoch_count=initial_selfplay_param.train_epoch))
     else:
+        future_first = executor.submit(lambda: train_network(
+            load_model_path=best_model_file,
+            train_model_folder=train_model_folder,
+            generation=0,
+            model_file_postfix=None,
+            history_data=history_data.get_primary(),
+            game_board=game_board,
+            epoch_count=initial_selfplay_param.train_epoch))
         future_second = None
+
     latest_first_model, latest_file_name_first = future_first.result()
-    if is_dual:
+    if network_param.is_dual_model:
         latest_second_model, latest_file_name_second = future_second.result()    
  
     print('initial training complete. model file={}'.format(latest_file_name_first))
-    if is_dual:
+    if network_param.is_dual_model:
         print('initial training complete. model file={}'.format(latest_file_name_second))
 
-    os.remove(network_param.best_model_file)
-    shutil.copy(latest_file_name_first, network_param.best_model_file)
+    os.remove(best_model_file)
+    shutil.copy(latest_file_name_first, best_model_file)
 
-    if is_dual:
-        os.remove(network_param.best_model_file_second)
-        shutil.copy(latest_file_name_second, network_param.best_model_file_second)
+    if network_param.is_dual_model:
+        os.remove(best_model_file_second)
+        shutil.copy(latest_file_name_second, best_model_file_second)
 
     del latest_first_model
-    if is_dual:
+    if network_param.is_dual_model:
         del latest_second_model
     tf.keras.backend.clear_session()
-
-'''
-def initial_train_dual_model(game_board: GameBoard,
-                        first_best_model_file: str,
-                        second_best_model_file: str,
-                        history_first_folder: str,
-                        history_second_folder: str,
-                        initial_selfplay_repeat: int,
-                        initial_train_count: int,
-                        executor: concurrent.futures.ThreadPoolExecutor,
-                        param: Parameter):
-    print('initial selfplay and train')
-
-    first,second = self_play_dualmodel(
-        first_brain=SelfplayRandomMCTSBrain(param=param),
-        second_brain= SelfplayRandomMCTSBrain(param=param),
-        game_board=game_board,
-        repeat_count=initial_selfplay_repeat,
-        history_folder_first=history_first_folder,
-        history_folder_second=history_second_folder)    
-    print('initial selfplay completed. begin train')
-    future_first = executor.submit(lambda: train_network(first_best_model_file, first, game_board, initial_train_count))
-    future_second = executor.submit(lambda: train_network(second_best_model_file, second, game_board, initial_train_count))
-    latest_first_model, latest_file_name_first = future_first.result()
-    latest_second_model, latest_file_name_second = future_second.result()
-
-    print('initial training complete. first model file={0}, second model file={1}'.format(latest_file_name_first, latest_file_name_second))
-    os.remove(first_best_model_file)
-    shutil.copy(latest_file_name_first, first_best_model_file)
-    os.remove(second_best_model_file)
-    shutil.copy(latest_file_name_second, second_best_model_file)
-    del latest_first_model
-    del latest_second_model
-    tf.keras.backend.clear_session()
-'''
 
 def train_cycle(
                 game_board : GameBoard,
                 network_param: NetworkParameter,
-                create_model_file: Callable[[str], bool],
+                create_model: Callable[[], Model],
                 selfplay_param: SelfplayParameter,
                 brain_param: BrainParameter,
                 exploration_param: ExplorationParameter,
                 initial_selfplay_param: InitSelfplayParameter = None):
-    
-    is_dual = network_param.best_model_file_second is not None
 
-    created_first = create_model_file(network_param.best_model_file)
-    if network_param.best_model_file_second is not None:
-        created_second = create_model_file(network_param.best_model_file_second)
+    best_model_file, best_model_file_second = create_best_model_file_path(network_param)
+    if network_param.is_dual_model:
+        created_first = try_crate_model_file(best_model_file, create_model)
+        if created_first:
+            print('create best model file:{}'.format(best_model_file))
+        created_second = try_crate_model_file(best_model_file_second, create_model)
+        if created_second:
+            print('create best model file:{}'.format(best_model_file_second))
+        created = created_first or created_second
     else:
-        created_second = False
+        created = try_crate_model_file(best_model_file, create_model)
+        if created:
+            print('create best model file:{}'.format(best_model_file))
 
     executor = concurrent.futures.ThreadPoolExecutor(2)
 
-    if created_first:
-        print('create best model file:{}'.format(network_param.best_model_file))
+    now = datetime.now()
+    train_model_folder = network_param.model_folder + '/{:04}{:02}{:02}{:02}{:02}{:02}'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
+    os.makedirs(train_model_folder, exist_ok=True)
+    if created:
         if initial_selfplay_param is not None:
             initial_train(
                 game_board=game_board,
@@ -195,7 +229,8 @@ def train_cycle(
                 selfplay_param=selfplay_param,
                 brain_param=brain_param,
                 initial_selfplay_param=initial_selfplay_param,
-                executor=executor)
+                executor=executor,
+                train_model_folder=train_model_folder)
 
     if brain_param.use_cache:
         ts_dict = ThreadSafeDict()
@@ -208,10 +243,10 @@ def train_cycle(
             ts_dict.clear()
 
         # selfplay brainはhistoryデータを各ブレインで持っているので先手後手で異なるインスタンスを使う
-        first_model = tf.keras.models.load_model(network_param.best_model_file)
+        first_model = tf.keras.models.load_model(best_model_file)
 
-        if is_dual:
-            second_model = tf.keras.models.load_model(network_param.best_model_file_second)
+        if network_param.is_dual_model:
+            second_model = tf.keras.models.load_model(best_model_file_second)
             predictor_first = DualNetworkPredictor(model=first_model, ts_dict=ts_dict)
             predictor_second = DualNetworkPredictor(model=second_model, ts_dict=ts_dict)
             first_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(
@@ -236,17 +271,46 @@ def train_cycle(
                     brain_param=brain_param,
                     exploration_param=exploration_param)
             
-        history_data = self_play_impl(first_brain=first_brain, second_brain=second_brain, game_board=game_board, selfplay_param=selfplay_param)
+        history_data = self_play_impl(
+            first_brain=first_brain, 
+            second_brain=second_brain, 
+            game_board=game_board, 
+            is_dual_model=network_param.is_dual_model,
+            selfplay_param=selfplay_param)
 
-        future_first = executor.submit(lambda: train_network(network_param.best_model_file, history_data.get_primary(), game_board, selfplay_param.train_epoch))
-        if is_dual:
-            future_second = executor.submit(lambda: train_network(network_param.best_model_file_second, history_data.get_secondary(), game_board, selfplay_param.train_epoch))
-
+        if network_param.is_dual_model:
+            future_first = executor.submit(lambda: train_network(
+                load_model_path=best_model_file,
+                train_model_folder=train_model_folder,
+                generation=i+1,
+                model_file_postfix='first',
+                history_data=history_data.get_primary(),
+                game_board=game_board,
+                epoch_count=initial_selfplay_param.train_epoch))
+            future_second = executor.submit(lambda: train_network(
+                load_model_path=best_model_file,
+                train_model_folder=train_model_folder,
+                generation=i+1,
+                model_file_postfix='second',
+                history_data=history_data.get_secondary(),
+                game_board=game_board,
+                epoch_count=initial_selfplay_param.train_epoch))
+        else:
+            future_first = executor.submit(lambda: train_network(
+                load_model_path=best_model_file,
+                train_model_folder=train_model_folder,
+                generation=i+1,
+                model_file_postfix=None,
+                history_data=history_data.get_primary(),
+                game_board=game_board,
+                epoch_count=initial_selfplay_param.train_epoch))
+            future_second = None
+                    
         latest_first_model, latest_file_name_first = future_first.result()
-        if is_dual:
+        if network_param.is_dual_model:
             latest_second_model, latest_file_name_second = future_second.result()
 
-        if is_dual:
+        if network_param.is_dual_model:
             print('training first model file={0}, second model file={1}'.format(latest_file_name_first, latest_file_name_second))
         else:
             print('training model file={0}'.format(latest_file_name_first))
@@ -259,7 +323,7 @@ def train_cycle(
             else:
                 latest_dict = None
 
-            if is_dual:
+            if network_param.is_dual_model:
                 best_predictor_first = DualNetworkPredictor(model=first_model, ts_dict=ts_dict)
                 best_predictor_second = DualNetworkPredictor(model=second_model, ts_dict=ts_dict)
                 best_brain = NetworkBrainFactory.create_dualmodel_network_brain(
@@ -291,98 +355,17 @@ def train_cycle(
             stats = evaluate_model(agent_target=Agent(brain=latest_brain, name='latest'), agent_base=Agent(brain=best_brain, name='best'), game_board=game_board,play_count=selfplay_param.evaluate_count, executor=executor)
             replace = selfplay_param.eval_judge(stats)
         if replace:
-            os.remove(network_param.best_model_file)
-            shutil.copy(latest_file_name_first, network_param.best_model_file)
+            os.remove(best_model_file)
+            shutil.copy(latest_file_name_first, best_model_file)
             print("first model replace best model")
-            if is_dual:
-                os.remove(network_param.best_model_file_second)
-                shutil.copy(latest_file_name_second, network_param.best_model_file_second)
+            if network_param.is_dual_model:
+                os.remove(best_model_file_second)
+                shutil.copy(latest_file_name_second, best_model_file_second)
                 print("second model replace best model") 
         del latest_first_model
         del first_model
-        if is_dual:
+        if network_param.is_dual_model:
             del latest_second_model
             del second_model
         tf.keras.backend.clear_session()
 
-'''
-def train_cycle_dualmodel(
-                game_board : GameBoard,
-                first_best_model_file : str,
-                second_best_model_file : str,
-                create_model_file: Callable[[str], bool],
-                history_first_folder : str,
-                history_second_folder : str,
-                brain_evaluate_count : int,
-                selfplay_repeat : int = 500,
-                epoch_count : int = 200,
-                cycle_count : int = 10,
-                eval_count: int = 20,
-                eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats,
-                use_cache = True,
-                initial_selfplay_repeat: int = 1000,
-                initial_train_count: int = 500,
-                param: Parameter = Parameter(),
-                is_continue :bool = False,
-                start_index:int = 0):
-    print('train_cycle_dualmodel')
-    executor = concurrent.futures.ThreadPoolExecutor(2)
-    new_model_first = create_model_file(first_best_model_file)
-    new_model_second = create_model_file(second_best_model_file)
-    if new_model_first and new_model_second and initial_selfplay_repeat > 0 and initial_train_count > 0:
-        initial_train_dual_model(
-            game_board=game_board,
-            first_best_model_file= first_best_model_file,
-            second_best_model_file= second_best_model_file,
-            history_first_folder= history_first_folder,
-            history_second_folder= history_second_folder,
-            initial_selfplay_repeat= initial_selfplay_repeat,
-            initial_train_count= initial_train_count,
-            executor= executor,
-            param=param)
-
-    if use_cache:
-        ts_dict = ThreadSafeDict()
-    else:
-        ts_dict = None
-    for i in range(cycle_count):
-        print('cycle {}/{}'.format(i + 1, cycle_count))
-        if use_cache:
-            ts_dict.clear()
-        first_model = tf.keras.models.load_model(first_best_model_file)
-        second_model = tf.keras.models.load_model(second_best_model_file)
-        first_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
-        second_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
-        first_history_file, second_history_fine = self_play_dualmodel(first_brain, second_brain,game_board, selfplay_repeat, history_first_folder, history_second_folder)
-        
-        future_first = executor.submit(lambda: train_network(first_best_model_file, first_history_file, game_board, epoch_count))
-        future_second = executor.submit(lambda: train_network(second_best_model_file, second_history_fine, game_board, epoch_count))
-        latest_first_model, latest_file_name_first = future_first.result()
-        latest_second_model, latest_file_name_second = future_second.result()
-
-        print('training first model file={0}, second model file={1}'.format(latest_file_name_first, latest_file_name_second))
-
-        replace = True
-        if eval_count > 0:
-            if use_cache:
-                latest_dict = ThreadSafeDict()
-            else:
-                latest_dict = None            
-            latest_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=latest_first_model, second_model=latest_second_model, ts_dict=latest_dict) 
-            best_brain = NetworkBrainFactory.create_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict) 
-            stats = evaluate_model(agent_target=Agent(brain=latest_brain, name='latest'), agent_base=Agent(brain=best_brain, name='best'), board=game_board,play_count=eval_count, executor=executor)
-            replace = eval_judge(stats)
-        if replace:
-            os.remove(first_best_model_file)
-            shutil.copy(latest_file_name_first, first_best_model_file)
-            print("first model replace best model")
-
-            os.remove(second_best_model_file)
-            shutil.copy(latest_file_name_second, second_best_model_file)
-            print("second model replace best model") 
-        del latest_first_model
-        del latest_second_model
-        del second_model
-        del first_model
-        tf.keras.backend.clear_session()
-'''

@@ -20,43 +20,25 @@ from montecarlo import MonteCarloBrain
 from network_common import train_cycle
 from self_play_brain import HistoryUpdater, ZeroToOneHistoryUpdater
 from parameter import NetworkParameter,SelfplayParameter,BrainParameter,ExplorationParameter,NetworkType,HistoryUpdateType,ActionSelectorType, InitSelfplayParameter, judge_stats
-from self_play import self_play_dualmodel, self_play
+from self_play import self_play_impl
 from self_play_brain import SelfplayRandomBrain
 from google_colab_helper import google_drive_path
 
 DN_FILTERS = 128
 DN_RESIDUAL_NUM = 16
 
+
+def get_model_folder(board_size : int = 15)->str:
+    return './model/gomoku_{0}'.format(board_size)
+
 def get_history_folder(board_size : int = 15)->str:
     return './data/gomoku_{0}'.format(board_size)
 
-def get_model_file_best(board_size : int = 15)->str:
-    return './model/gomoku_{0}/best.keras'.format(board_size)
+def get_model_folder_gcolab(board_size: int=15)->str:
+    return google_drive_path + 'model/gomoku_{0}'.format(board_size)
 
-def get_history_folder_first(board_size : int = 15)->str:
-    return './data/gomoku_{0}/first'.format(board_size)
-def get_history_folder_second(board_size : int = 15)->str:
-    return './data/gomoku_{0}/second'.format(board_size)
-def get_model_file_best_first(board_size : int = 15)->str:
-    return './model/gomoku_{0}/first/best.keras'.format(board_size)
-def get_model_file_best_second(board_size : int = 15)->str:
-    return './model/gomoku_{0}/second/best.keras'.format(board_size)
-
-def get_model_file_best_gcolab(board_size: int=15)->str:
-  return google_drive_path + 'model/gomoku_{0}/best.keras'.format(board_size)
 def get_history_folder_gcolab(board_size: int=15)->str:
-  return google_drive_path + 'history/gomoku_{0}'.format(board_size)
-
-
-def get_model_file_first_best_gcolab(board_size: int=15)->str:
-  return google_drive_path + 'model/gomoku_{0}/first/best_first.keras'.format(board_size)
-def get_history_folder_first_gcolab(board_size: int=15)->str:
-  return google_drive_path + 'history/gomoku_{0}/first'.format(board_size)
-
-def get_model_file_second_best_gcolab(board_size: int=15)->str:
-  return google_drive_path + 'model/gomoku_{0}/second/best_second.keras'.format(board_size)
-def get_history_folder_second_gcolab(board_size: int=15)->str:
-  return google_drive_path + 'history/gomoku_{0}/second'.format(board_size)
+    return google_drive_path + 'model/gomoku_{0}'.format(board_size)
 
 
 def conv(filters):
@@ -75,12 +57,7 @@ def residual_block():
         return x
     return f
 
-def dual_network(file_best :str, board_size :int, show_summary:bool = False)->bool:
-    if os.path.exists(file_best):
-        return False
-    parent = os.path.dirname(file_best)
-    os.makedirs(parent, exist_ok=True)
-    
+def create_dual_network(board_size :int)->Model:
     input = Input(shape=(board_size, board_size, 2))
 
     x = conv(DN_FILTERS)(input)
@@ -104,14 +81,8 @@ def dual_network(file_best :str, board_size :int, show_summary:bool = False)->bo
     v = Activation('tanh', name='v')(v)
 
     model = Model(inputs=input, outputs=[p,v])
-    if show_summary:
-        model.summary()
     model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
-    model.save(file_best)
-
-    del model
-    tf.keras.backend.clear_session()
-    return True
+    return model
 
 
 def dual_network_A(file_best :str, board_size :int, show_summary:bool = False)->bool:
@@ -149,36 +120,24 @@ def dual_network_A(file_best :str, board_size :int, show_summary:bool = False)->
 
 def create_network_parameter(board_size : int = 15)->NetworkParameter:
     return NetworkParameter(
-        best_model_file=get_model_file_best(board_size=board_size), 
-        best_model_file_second=None, 
-        network_type=NetworkType.DualNetwork)
+        model_folder=get_model_folder(board_size=board_size), 
+        network_type=NetworkType.DualNetwork,
+        is_dual_model=False)
 def create_network_parameter_dual(board_size : int = 15)->NetworkParameter:
     return NetworkParameter(
-        best_model_file=get_model_file_best_first(board_size=board_size),
-        best_model_file_second=get_model_file_best_second(board_size=board_size), 
-        network_type=NetworkType.DualNetwork)
+        model_folder=get_model_folder(board_size=board_size), 
+        network_type=NetworkType.DualNetwork,
+        is_dual_model=True)
 
 def create_selfplay_parameter(board_size : int = 15)->SelfplayParameter:
     return SelfplayParameter(
-        history_folder=get_history_folder_first(board_size=board_size),
+        history_folder=get_history_folder(board_size=board_size),
         cycle_count=10,
-        history_folder_second=None,
         selfplay_repeat=100,
-        start_index=0,
         evaluate_count=20,
         eval_judge=judge_stats,
-        train_epoch=200)
-
-def create_selfplay_parameter_dual(board_size : int = 15)->SelfplayParameter:
-    return SelfplayParameter(
-        history_folder=get_history_folder_first(board_size=board_size),
-        cycle_count=10,
-        history_folder_second=get_history_folder_second(board_size=board_size),
-        selfplay_repeat=100,
-        start_index=0,
-        evaluate_count=20,
-        eval_judge=judge_stats,
-        train_epoch=200)
+        train_epoch=200,
+        continue_history_folder_path=None)
 
 def create_brain_parameter(board_size : int = 15)->BrainParameter:
     return BrainParameter(
@@ -203,7 +162,7 @@ def train_cycle_gomoku(
 
     train_cycle(
         game_board= GomokuBoard(board_size=board_size),
-        create_model_file=lambda x:dual_network(x, board_size),
+        create_model=lambda :create_dual_network(board_size),
         network_param=network_param,
         selfplay_param=selfplay_param,
         brain_param=brain_param,
@@ -214,130 +173,3 @@ def train_cycle_gomoku_default(board_size=15):
     pass
 def train_cycle_gomoku_dual_default(board_size=15):
     pass
-
-'''
-def train_cycle_gomoku(
-                board_size : int = 15,
-                brain_evaluate_count : int = 50,
-                selfplay_repeat : int = 500,
-                epoch_count : int = 200,
-                cycle_count : int = 10,
-                eval_count: int = 20,
-                eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats,
-                use_cache: bool = True,
-                new_model: bool = False,
-                initial_selfplay_repeat: int = 1000,
-                initial_train_count: int = 500,
-                history_updater: HistoryUpdater=HistoryUpdater(),
-                is_continue :bool = False,
-                start_index:int = 0):  
-    dual_network(get_model_file_best(board_size),board_size)
-    train_cycle(
-        game_board= GomokuBoard(board_size=board_size),
-        brain_evaluate_count=brain_evaluate_count,
-        best_model_file=get_model_file_best(board_size=board_size), 
-        history_folder=get_history_folder(board_size=board_size),
-        selfplay_repeat= selfplay_repeat,
-        epoch_count= epoch_count ,
-        cycle_count=cycle_count,
-        eval_count=eval_count ,
-        eval_judge=eval_judge,
-        use_cache=use_cache,
-        new_model=new_model,
-        initial_selfplay_repeat=initial_selfplay_repeat,
-        initial_train_count=initial_train_count,
-        history_updater=history_updater,
-        is_continue=is_continue,
-        start_index=start_index)
-
-
-def train_cycle_dualmodel_gomoku(
-                board_size : int = 15,
-                brain_evaluate_count : int = 50,
-                selfplay_repeat : int = 500,
-                epoch_count : int = 200,
-                cycle_count : int = 10,
-                eval_count: int = 20,
-                eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats,
-                use_cache: bool = True,
-                initial_selfplay_repeat: int = 1000,
-                initial_train_count: int = 500,
-                history_updater: HistoryUpdater = ZeroToOneHistoryUpdater(),
-                is_continue :bool = False,
-                start_index:int = 0):  
-    first_best_file = get_model_file_best_first(board_size)
-    second_best_file = get_model_file_best_second(board_size)
-    exist_first = dual_network(first_best_file,board_size)
-    exist_second = dual_network(second_best_file,board_size)
-    new_model = exist_first or exist_second
-
-    train_cycle_dualmodel(
-        game_board= GomokuBoard(board_size=board_size),
-        brain_evaluate_count=brain_evaluate_count,
-        first_best_model_file=first_best_file,
-        second_best_model_file=second_best_file,
-        history_first_folder=get_history_folder_first(board_size),
-        history_second_folder=get_history_folder_second(board_size), 
-        selfplay_repeat= selfplay_repeat,
-        epoch_count= epoch_count ,
-        cycle_count=cycle_count,
-        eval_count=eval_count ,
-        eval_judge=eval_judge,
-        use_cache=use_cache,
-        new_model=new_model,
-        initial_selfplay_repeat=initial_selfplay_repeat,
-        initial_train_count=initial_train_count,
-        history_updater=history_updater,
-        is_continue=is_continue,
-        start_index=start_index)
-
-def train_cycle_gomoku_gcolab(
-                board_size : int = 15
-                ,selfplay_repeat : int = 20
-                ,epoch_count : int = 100
-                ,cycle_count : int = 10
-                ,eval_count: int = 0
-                ,eval_temperature:float = 1.0
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache: bool = True):
-    dual_network(get_model_file_best_gcolab(board_size),board_size)
-    train_cycle(
-        game_board= GomokuBoard(),
-        best_model_file=get_model_file_best_gcolab(board_size),
-        history_folder=get_history_folder_gcolab(board_size),
-        selfplay_repeat= selfplay_repeat,
-        epoch_count= epoch_count ,
-        cycle_count=cycle_count,
-        eval_count=eval_count ,
-        eval_judge=eval_judge,
-        use_cache=use_cache)
-
-
-def train_cycle_dualmodel_gomoku_gcolab(
-                board_size : int = 15
-                ,brain_evaluate_count : int = 50
-                ,selfplay_repeat : int = 500
-                ,epoch_count : int = 200
-                ,cycle_count : int = 10
-                ,eval_count: int = 20
-                ,eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats
-                ,use_cache: bool = True):            
-    first_best_file = get_model_file_first_best_gcolab(board_size)
-    second_best_file = get_model_file_second_best_gcolab(board_size)
-    dual_network(first_best_file,board_size)
-    dual_network(second_best_file,board_size)
-    train_cycle_dualmodel(
-        game_board= GomokuBoard(board_size=board_size),
-        brain_evaluate_count=brain_evaluate_count,
-        first_best_model_file=first_best_file,
-        second_best_model_file=second_best_file,
-        history_first_folder=get_history_folder_first_gcolab(board_size),
-        history_second_folder=get_history_folder_second_gcolab(board_size), 
-        selfplay_repeat= selfplay_repeat,
-        epoch_count= epoch_count ,
-        cycle_count=cycle_count,
-        eval_count=eval_count ,
-        eval_judge=eval_judge,
-        use_cache=use_cache)
-
-'''

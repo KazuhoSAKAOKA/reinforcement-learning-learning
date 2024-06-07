@@ -1,10 +1,10 @@
 import unittest
-from gomoku_network import train_cycle_gomoku,create_network_parameter_dual,create_selfplay_parameter_dual
+from gomoku_network import train_cycle_gomoku,create_network_parameter_dual,create_selfplay_parameter
 from parameter import NetworkParameter,SelfplayParameter,BrainParameter,ExplorationParameter,NetworkType,HistoryUpdateType,ActionSelectorType, InitSelfplayParameter, judge_stats
 import os
 import shutil
 
-TEST_FOLDER = './test_files/gomoku_network/'
+TEST_FOLDER = './test_files/gomoku_network'
 def init_test_folder():
     if os.path.exists(TEST_FOLDER):
         shutil.rmtree(TEST_FOLDER)
@@ -13,17 +13,16 @@ def init_test_folder():
 class TestGomokuNetwork(unittest.TestCase):
     def test_train_cycle_gomoku_dual(self):
         init_test_folder()
-        test_model_first_file = TEST_FOLDER + '/model/first/model_best.keras'
-        test_model_second_file = TEST_FOLDER + 'model//second/model_best.keras'
-        test_history_first_folder = TEST_FOLDER + '/history/first/model_best.keras'
-        test_history_second_folder = TEST_FOLDER + '/history/second/model_best.keras'
+        test_model_folder = TEST_FOLDER + '/model'
+        test_history_folder = TEST_FOLDER + '/history'
 
         test_board_size = 7
         network_parameter= create_network_parameter_dual(test_board_size)
-        network_parameter.best_model_file = test_model_first_file
-        network_parameter.best_model_file_second = test_model_second_file
+        network_parameter.model_folder = test_model_folder
+        network_parameter.is_dual_model = True
         
-        selfplay_parameter = create_selfplay_parameter_dual(test_board_size)
+        selfplay_parameter = create_selfplay_parameter(test_board_size)
+        selfplay_parameter.history_folder = test_history_folder
         selfplay_parameter.cycle_count = 2
         selfplay_parameter.train_epoch = 5
         selfplay_parameter.selfplay_repeat = 10

@@ -4,12 +4,12 @@ from game_board import GameBoard
 from stone_game_board import StoneGameBoard
 from gomoku_board import GomokuBoard
 from tictactoe_board import TicTacToeBoard
-from network_common import load_data_file_name
+from self_play import HistoryData
 
 
-def history_view(game_board: StoneGameBoard, history_file: str):
-    history = load_data_file_name(history_file)
-
+def history_view(game_board: StoneGameBoard, history_folder: str):
+    history_data = HistoryData(history_folder)
+    history = history_data.deserialize()
     for (x, y_policy, y_value) in history:
         print("====== hisotry ======")
         game_board.self_cells = np.array(x[0]).reshape(game_board.board_size, game_board.board_size)
@@ -33,8 +33,9 @@ def history_list_save(game_board: StoneGameBoard, history:list, save_file: str):
             f.write('value={}\n'.format(y_value))
             f.write("~~~~~~~~~~~~~~~~~~~~~\n")
 
-def history_save(game_board: StoneGameBoard, history_file: str, save_file: str):
-    history = load_data_file_name(history_file)
+def history_save(game_board: StoneGameBoard, history_folder: str, save_file: str):
+    history_data = HistoryData(history_folder)
+    history = history_data.deserialize()
     history_list_save(game_board, history, save_file)
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 import unittest
 from network_common import train_network
 from tictactoe_board import TicTacToeBoard
-from tictactoe_network import dual_network,train_cycle_tictactoe, TICTACTOE_NETWORK_PARAM, TICTACTOE_NETWORK_PARAM_DUAL,TICTACTOE_SELFPLAY_PARAM,TICTACTOE_SELFPLAY_PARAM_DUAL,TICTACTOE_BRAIN_PARAM,TICTACTOE_INIT_TRAIN_PARAM
+from tictactoe_network import create_dual_network_model,train_cycle_tictactoe, TICTACTOE_NETWORK_PARAM, TICTACTOE_NETWORK_PARAM_DUAL,TICTACTOE_SELFPLAY_PARAM,TICTACTOE_SELFPLAY_PARAM_DUAL,TICTACTOE_BRAIN_PARAM,TICTACTOE_INIT_TRAIN_PARAM
 from parameter import BrainParameter, NetworkParameter, SelfplayParameter, InitSelfplayParameter,ExplorationParameter
 import os
 import shutil
@@ -24,20 +24,14 @@ class TestTicTacToeNetwork(unittest.TestCase):
 #        print(y)
 
     def test_model_simple(self):
-        init_test_folder()
-        test_model_file = TEST_FOLDER + 'model_best.keras'
-        if not dual_network(test_model_file):
-            self.fail('dual_network failed')
-        if not os.path.exists(test_model_file):
-            self.fail('model file not found')
-        model = tf.keras.models.load_model(test_model_file)
-        if model is None:
-            self.fail('model load failed')
+        model = create_dual_network_model()
         game_board = TicTacToeBoard(3)
         x = game_board.reshape_to_input()
         y = model.predict(x)
         print(y)
-
+        del model
+        tf.keras.backend.clear_session()
+        
     def test_train_network(self):
         init_test_folder()
         test_model_file = TEST_FOLDER + 'model_best.keras'
@@ -74,7 +68,7 @@ class TestTicTacToeNetwork(unittest.TestCase):
         test_brain_param.mcts_expand_limit = 2
         test_selfplay_param = copy.copy(TICTACTOE_SELFPLAY_PARAM_DUAL)
         test_selfplay_param.history_folder = TEST_FOLDER + '/first'
-        test_selfplay_param.history_folder_second = TEST_FOLDER + '/second'
+        test_selfplay_param.is_dual_model = True
         test_selfplay_param.selfplay_repeat = 10
         test_selfplay_param.cycle_count = 2
         test_selfplay_param.evaluate_count = 5

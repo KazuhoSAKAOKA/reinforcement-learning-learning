@@ -95,16 +95,13 @@ def prepare_dir(folder:str)->str:
     os.makedirs(folder, exist_ok=True)
     return folder
 
-def init_history_data(param:SelfplayParameter)->HistoryData:
+def init_history_data(is_dual_model: bool, selfplay_param:SelfplayParameter)->HistoryData:
     now = datetime.now()
-    if param.history_folder_second is None or param.history_folder_second == '':
-        path = prepare_dir(param.history_folder) + '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
+    path = prepare_dir(selfplay_param.history_folder) + '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
+    if not is_dual_model:
         return HistoryData(path)
     else:
-        filename = '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
-        path1 = prepare_dir(param.history_folder) + filename
-        path2 = prepare_dir(param.history_folder_second) + filename
-        return DualHistoryData(path1, path2)
+        return DualHistoryData(path)
 
 def load_data_file(history_file : Path):
     with history_file.open(mode='rb') as f:
@@ -121,20 +118,19 @@ def self_play_impl(
             first_brain: SelfplayBrain, 
             second_brain : SelfplayBrain, 
             game_board : GameBoard, 
+            is_dual_model: bool,
             selfplay_param: SelfplayParameter) -> HistoryDataBase:
     env = GameEnv(game_board=game_board, first_agent=Agent(first_brain),second_agent= Agent(second_brain))
     first_win = 0
     second_win = 0
     draw = 0
-    if selfplay_param.is_continue:
-        first_history_path = sorted(Path(selfplay_param.history_folder).glob('*.history'))[-1]
-        if selfplay_param.history_folder_second is not None and selfplay_param.history_folder_second != '':
-            second_history_path = sorted(Path(selfplay_param.history_folder_second).glob('*.history'))[-1]
-            history_data = DualHistoryData(first_history_path,second_history_path)
+    if selfplay_param.continue_history_folder_path is not None:
+        if selfplay_param.is_dual_model:
+            history_data = DualHistoryData(selfplay_param.continue_history_folder_path)
         else:
-            history_data = HistoryData(first_history_path)
+            history_data = HistoryData(selfplay_param.continue_history_folder_path)
     else:
-        history_data = init_history_data(selfplay_param)
+        history_data = init_history_data(is_dual_model=is_dual_model,selfplay_param=selfplay_param)
     print('Self play start. start:{}, history_file:{}'.format(datetime.now(), history_data))
     
     while history_data.get_count() < selfplay_param.selfplay_repeat:
@@ -163,7 +159,7 @@ def self_play_impl(
     return history_data
 
 
-
+'''
 def self_play(
             first_brain: SelfplayBrain, 
             second_brain : SelfplayBrain, 
@@ -188,18 +184,13 @@ def self_play_dualmodel(
             game_board : GameBoard, 
             repeat_count : int, 
             history_folder_first: str, 
-            history_folder_second: str,
-            is_continue:bool = False,
-            start_index:int = 0) -> Tuple[str,str]:
+            continue_history_folder_path:str=None) -> Tuple[str,str]:
     param = SelfplayParameter(
         history_folder=history_folder_first,
-        history_folder_second=history_folder_second,
         selfplay_repeat=repeat_count,
-        is_continue=is_continue,
-        start_index=start_index
-    )
+        continue_history_folder_path=continue_history_folder_path)
     l = self_play_impl(first_brain, second_brain, game_board, param)
     return l[0], l[1]
-
+'''
 
 

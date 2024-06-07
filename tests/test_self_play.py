@@ -1,6 +1,6 @@
 import unittest
 from self_play_brain import SelfplayBrain, SelfplayRandomMCTSBrain
-from self_play import self_play_impl,self_play,load_data_file_name,self_play_dualmodel,HistoryData
+from self_play import self_play_impl, HistoryData
 from tictactoe_board import TicTacToeBoard
 from parameter import HistoryUpdateType, BrainParameter, SelfplayParameter
 from debug_history import history_save
@@ -22,6 +22,7 @@ class TestSelfPlay(unittest.TestCase):
                 first_brain=first_brain,
                 second_brain=second_brain,
                 game_board=TicTacToeBoard(),
+                is_dual_model=False,
                 selfplay_param=test_selfplay_param)
 
         history=history_data.deserialize()
@@ -35,15 +36,13 @@ class TestSelfPlay(unittest.TestCase):
         if os.path.exists(history_parent):
             shutil.rmtree(history_parent)
 
-        history_first_folder = history_parent + '/history_first'
-        history_second_folder = history_parent + '/history_second'
-        os.makedirs(history_first_folder)
-        os.makedirs(history_second_folder)
+        history_folder = history_parent + '/history'
+        os.makedirs(history_folder)
 
         brain_param = BrainParameter(mcts_evaluate_count=10, mcts_expand_limit=10, history_update_type=HistoryUpdateType.zero_to_one)
         first_brain=SelfplayRandomMCTSBrain(brain_param=brain_param)
         second_brain= SelfplayRandomMCTSBrain(brain_param=brain_param)
-        test_selfplay_param = SelfplayParameter(history_folder=history_first_folder, history_folder_second=history_second_folder, selfplay_repeat=100)
+        test_selfplay_param = SelfplayParameter(history_folder=history_folder, selfplay_repeat=100)
         brain_param = BrainParameter(mcts_evaluate_count=10, mcts_expand_limit=10, history_update_type=HistoryUpdateType.zero_to_one)
         first_brain=SelfplayRandomMCTSBrain(brain_param=brain_param)
         second_brain= SelfplayRandomMCTSBrain(brain_param=brain_param)
@@ -52,6 +51,7 @@ class TestSelfPlay(unittest.TestCase):
                 first_brain=first_brain,
                 second_brain=second_brain,
                 game_board=TicTacToeBoard(),
+                is_dual_model=True,
                 selfplay_param=test_selfplay_param)
 
         history_first=history_data.get_primary().deserialize()

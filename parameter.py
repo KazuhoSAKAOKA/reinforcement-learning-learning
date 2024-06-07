@@ -49,31 +49,27 @@ class NetworkType(Enum):
 
 class NetworkParameter:
     def __init__(self, 
-                best_model_file : str,
-                best_model_file_second : str = None,
-                network_type : NetworkType = NetworkType.DualNetwork):
-        self.best_model_file = best_model_file
-        self.best_model_file_second = best_model_file_second
+                model_folder : str,
+                network_type : NetworkType = NetworkType.DualNetwork,
+                is_dual_model:bool = False):
+        self.model_folder = model_folder
         self.network_type = network_type
+        self.is_dual_model = is_dual_model
 
 class SelfplayParameter:
     def __init__(self, 
                 history_folder : str,
                 cycle_count:int = 10,
-                history_folder_second : str = None,
                 selfplay_repeat : int = 500,
-                is_continue :bool = False,
-                start_index:int = 0,
+                continue_history_folder_path :str = None,
                 evaluate_count : int = 50,
                 eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats,
                 gamma : float = GAMMA,
                 train_epoch : int = 200):
         self.cycle_count = cycle_count
         self.history_folder = history_folder
-        self.history_folder_second = history_folder_second
         self.selfplay_repeat = selfplay_repeat
-        self.is_continue = is_continue
-        self.start_index = start_index
+        self.continue_history_folder_path = continue_history_folder_path
         self.evaluate_count = evaluate_count
         self.eval_judge = eval_judge
         self.gamma = gamma

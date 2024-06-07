@@ -3,7 +3,7 @@ from gomoku_board import GomokuBoard
 from agent import Agent
 from network_brain import NetworkBrain, predict, predict_core
 from network_common import initial_train_dual_model
-from gomoku_network import dual_network, get_model_file_best, get_model_file_best_first, get_model_file_best_second, train_cycle_gomoku,train_cycle_dualmodel_gomoku,get_history_folder_first,get_history_folder_second
+from gomoku_network import dual_network, get_model_file_best, get_model_file_best_first, get_model_file_best_second, train_cycle_gomoku,train_cycle_dualmodel_gomoku,get_history_folder_first
 from gui import HumanGuiBrain, run_gui
 import tensorflow as tf
 import os
@@ -68,7 +68,7 @@ def debug_init_train(board_size:int = 11,
                         first_best_model_file=first_best_model_file, 
                         second_best_model_file=second_best_model_file,
                         history_first_folder=get_history_folder_first(board_size),
-                        history_second_folder=get_history_folder_second(board_size),
+                        is_dual_model=True,
                         initial_selfplay_repeat=1000,
                         initial_train_count=1000,
                         executor=concurrent.futures.ThreadPoolExecutor(2),
@@ -92,7 +92,7 @@ def debug_selfplay(board_size:int = 11,
     second_model = tf.keras.models.load_model(second_best_model_file)
     first_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
     second_brain = NetworkBrainFactory.create_selfplay_dualmodel_network_brain(evaluate_count=brain_evaluate_count, first_model=first_model, second_model=second_model, ts_dict=ts_dict, history_updater=history_updater)
-    first_history_file, second_history_fine = self_play_dualmodel(first_brain, second_brain,GomokuBoard(board_size=board_size), 2, get_history_folder_first(board_size), get_history_folder_second(board_size))   
+    history_data = self_play_dualmodel(first_brain, second_brain,GomokuBoard(board_size=board_size), 2, get_history_folder_first(board_size))   
 
 #first_best_model_file = './test1_model.keras'
 #second_best_model_file = './test2_model.keras'
