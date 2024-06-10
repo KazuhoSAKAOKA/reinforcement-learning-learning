@@ -155,7 +155,7 @@ def initial_train(
             game_board=game_board,
             epoch_count=initial_selfplay_param.train_epoch))
         future_second = executor.submit(lambda: train_network(
-            load_model_path=best_model_file,
+            load_model_path=best_model_file_second,
             train_model_folder=train_model_folder,
             generation=0,
             model_file_postfix='second',
@@ -288,7 +288,7 @@ def train_cycle(
                 game_board=game_board,
                 epoch_count=initial_selfplay_param.train_epoch))
             future_second = executor.submit(lambda: train_network(
-                load_model_path=best_model_file,
+                load_model_path=best_model_file_second,
                 train_model_folder=train_model_folder,
                 generation=i+1,
                 model_file_postfix='second',
