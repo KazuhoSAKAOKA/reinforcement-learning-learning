@@ -8,7 +8,11 @@ from datetime import datetime
 os.makedirs('./logs', exist_ok=True)
 
 begin = datetime.now()
-file_handler = logging.handlers.TimedRotatingFileHandler(filename='./logs/gomoku.log', when='H', encoding='utf-8')
+file_handler = logging.handlers.TimedRotatingFileHandler(
+    filename='./logs/gomoku.log', 
+    when='MIDNIGHT',
+    backupCount=31, 
+    encoding='utf-8')
 logger = logging.getLogger()
 logger.addHandler(file_handler)
 logger.setLevel(logging.INFO)
