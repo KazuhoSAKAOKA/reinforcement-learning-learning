@@ -5,7 +5,8 @@ from agent import Agent
 from mini_max import AlphaBetaBrain
 from network_common import NetworkBrain
 
-import threading
+import concurrent.futures
+
 import numpy as np
 class HumanGuiBrain:
     def __init__(self):
@@ -28,9 +29,8 @@ class Application(tk.Frame):
         self.pack()
         self.first_agent = first_agent
         self.second_agent = second_agent
-        self.thread = None
-
-
+        self.executor = concurrent.futures.ThreadPoolExecutor(1)
+        self.future = None
         self.on_draw()
         self.try_network_action()
 
@@ -64,14 +64,20 @@ class Application(tk.Frame):
             return type(self.second_agent.brain) is HumanGuiBrain
 
     def try_network_action(self):
+        if self.game_board.is_done():
+            return
         if self.game_board.is_first_player_turn():
             if type(self.first_agent.brain) is not HumanGuiBrain:
-                self.act_network(self.first_agent)
+                if self.future is None:
+                    self.future = self.executor.submit(lambda : self.act_network(self.first_agent))
+                    self.polling()
         else:
             if type(self.second_agent.brain) is not HumanGuiBrain:
-                self.act_network(self.second_agent)
+                if self.future is None:
+                    self.future = self.executor.submit(lambda : self.act_network(self.second_agent))
+                    self.polling()
 
-    def act_network(self, agent : Agent):
+    def act_network(self, agent : Agent)->GameBoard:
         print("begin select action")
         selected = agent.select_action(self.game_board)
         if type(agent.brain) is NetworkBrain:
@@ -82,11 +88,26 @@ class Application(tk.Frame):
         next_board,succeed = self.game_board.transit_next(selected)
         if not succeed:
             return
+        return next_board
+    
+    def polling(self):
+        if self.future is None:
+            return
+        if self.future.done():
+            next_board = self.future.result()
+            self.future = None
+            self.update(next_board)
+            return
+        self.master.after(200, self.polling)
+
+
+    def update(self, next_board : GameBoard):
         self.game_board = next_board
         self.on_draw()
         done, result = self.game_board.judge_last_action()
         if done:
             print(result)
+        self.try_network_action()
 
     def click(self, event):
         if not self.is_player_turn():

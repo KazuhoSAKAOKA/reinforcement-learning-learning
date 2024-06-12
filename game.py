@@ -3,6 +3,9 @@ from agent import Agent
 from typing import Callable
 from typing import Tuple
 
+from logging import getLogger, INFO
+logger = getLogger(__name__)
+
 def do_empty1(board : GameBoard):
     pass
 def do_empty2(board : GameBoard, action : int):
@@ -55,7 +58,13 @@ class GameEnv:
     def play(self) -> GameResult:
         self.game_board.reset()
         current = self.game_board
+
+        logger.info("play start")
+
         while True:
+            logger.info("Turn: {0}".format(current.get_turn()))
+            logger.info(current)
+
             done, result = current.judge_last_action()
             if done:
                 break
@@ -64,16 +73,22 @@ class GameEnv:
 
             if current.get_turn() % 2 == 0:
                 action = self.first_agent.select_action(current)
+                logger.info("first player select: {0}".format(action))
             else:
                 action = self.second_agent.select_action(current)
+                logger.info("second player select: {0}".format(action))
             next_board, succeed = current.transit_next(action)
             if not succeed:
+                logger.error("state transit failed: {0}".format(action))
                 raise Exception("Invalid action")
 
             current = next_board
             self.selected_action_callback(current, action)
         absolute_result = current.convert_to_result(result)
         self.episode_callback(self.index, current, absolute_result)
+
+        logger.info("play end. result: {0}".format(absolute_result))
+
         return absolute_result
     
     def play_n(self, n: int) -> GameStats:
@@ -90,7 +105,10 @@ class GameEnv:
             else:
                 draw += 1
             self.index += 1
-        print("\r First player {0} win: {1}, Second player {2} win: {3}, Draw: {4}".format(self.first_agent.get_name(), first_player_win, self.second_agent.get_name(), second_player_win, draw))
+        msg = "\r First player {0} win: {1}, Second player {2} win: {3}, Draw: {4}".format(self.first_agent.get_name(), first_player_win, self.second_agent.get_name(), second_player_win, draw)
+        print(msg)
+        logger.info(msg)
+
         return GameStats(first_player_win, second_player_win, draw)
 
 

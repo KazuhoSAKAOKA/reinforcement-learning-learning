@@ -65,7 +65,8 @@ class SelfplayParameter:
                 evaluate_count : int = 50,
                 eval_judge: Callable[[Tuple[GameStats, GameStats]], bool] = judge_stats,
                 gamma : float = GAMMA,
-                train_epoch : int = 200):
+                train_epoch : int = 200,
+                output_visualize_text : bool = True):
         self.cycle_count = cycle_count
         self.history_folder = history_folder
         self.selfplay_repeat = selfplay_repeat
@@ -74,6 +75,7 @@ class SelfplayParameter:
         self.eval_judge = eval_judge
         self.gamma = gamma
         self.train_epoch = train_epoch
+        self.output_visualize_text = output_visualize_text
 
 class InitSelfplayParameter:
     def __init__(self, 

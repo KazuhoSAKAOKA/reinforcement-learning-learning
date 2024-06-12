@@ -53,6 +53,12 @@ class GameBoard:
     @abstractmethod
     def reshape_history_to_input(self, history) -> any:
         pass
+
+    # historyから状態を復元
+    @abstractmethod
+    def deserialize(self, history) -> any:
+        pass
+
     # hisotryを増やす
     def augmente_data(self, history) -> any:
         return history

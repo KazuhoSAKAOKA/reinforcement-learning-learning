@@ -40,11 +40,22 @@ class StoneGameBoard(GameBoard):
         xs, y_policies, y_values = zip(*history)
         xs = np.array(xs)
         a,b,c = (self.board_size, self.board_size, 2)
-        xs = xs.reshape(len(xs), c, a, b).transpose(0, 2, 3, 1)        
+        xs = xs.reshape(len(xs), c, a, b).transpose(0, 2, 3, 1)
         y_policies = np.array(y_policies)
         y_values = np.array(y_values)
         return xs, y_policies, y_values
 
+    # historyから状態を復元
+    def deserialize(self, history) -> list:
+        states = []
+        for (x, y_policy, y_value) in history:
+            game_board = StoneGameBoard(self.board_size)
+            game_board.self_cells = np.array(x[0]).reshape(game_board.board_size, game_board.board_size)
+            game_board.enemy_cells = np.array(x[1]).reshape(game_board.board_size, game_board.board_size)
+            game_board.turn = np.sum(x[0][:]) + np.sum(x[1][:])
+            states.append((game_board, y_policy, y_value))
+        return states
+    
     def transit_next(self, action)-> Tuple['StoneGameBoard', bool]:
         '''
         次の状態を返す

@@ -1,6 +1,18 @@
+import logging.handlers
 from gomoku_network import train_cycle_gomoku,create_network_parameter_dual,create_selfplay_parameter,create_brain_parameter, create_initial_selfplay_parameter
 from parameter import NetworkParameter,SelfplayParameter,BrainParameter,ExplorationParameter,NetworkType,HistoryUpdateType,ActionSelectorType, InitSelfplayParameter, judge_stats
+import logging
+import os
+from datetime import datetime
 
+os.makedirs('./logs', exist_ok=True)
+
+begin = datetime.now()
+file_handler = logging.handlers.TimedRotatingFileHandler(filename='./logs/gomoku.log', when='H', encoding='utf-8')
+logger = logging.getLogger()
+logger.addHandler(file_handler)
+logger.setLevel(logging.INFO)
+logger.info('begin')
 BOARD_SIZE=11
 
 

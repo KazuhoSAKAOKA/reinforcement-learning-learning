@@ -137,7 +137,7 @@ class MctsNode(AbstractMctsNode):
         self.is_root = is_root
         self.node_selector = node_selector
     def __repr__(self) -> str:
-        return 'Node(w:{0},n:{1})'.format(self.w, self.n)
+        return 'Node(last_action={0},w:{1},n:{2})'.format(self.game_board.get_last_action(), self.w, self.n)
     
     #abstractmethod
     def evaluate_self(self)->float:
@@ -171,7 +171,6 @@ class MctsNode(AbstractMctsNode):
                 logger.debug(self.game_board)
                 logger.debug("policy:{0}, v={1}".format(0, value))
                 logger.debug("============")
-                logger.debug()
             
             return value
 

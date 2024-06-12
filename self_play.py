@@ -28,6 +28,9 @@ class HistoryDataBase:
     #abstractmethod
     def deserialize(self)->list:
         pass
+    #abstractmethod
+    def get_folder(self)->str:
+        pass
 
 class HistoryData(HistoryDataBase):
     def __init__(self, folder_path:str):
@@ -62,7 +65,8 @@ class HistoryData(HistoryDataBase):
             with file.open(mode='rb') as f:
                 history.extend(pickle.load(f))
         return history
-    
+    def get_folder(self)->str:
+        return self.folder
     def __repr__(self) -> str:
         return '{}'.format(self.folder)
 class DualHistoryData(HistoryDataBase):
@@ -72,19 +76,17 @@ class DualHistoryData(HistoryDataBase):
         path_second = self.folder / second_key
         self.history_data_first = HistoryData(path_first)
         self.history_data_second = HistoryData(path_second)
-    def serialize(self, data_1, data_2):
+    def serialize(self, data_1 : list, data_2 : list):
         self.history_data_first.serialize(data_1, None)
         self.history_data_second.serialize(data_2, None)
-
     def get_count(self)->int:
         return self.history_data_first.get_count()
-    
-
     def get_primary(self)->'HistoryDataBase':
         return self.history_data_first
     def get_secondary(self)->'HistoryDataBase':
         return self.history_data_second
-
+    def get_folder(self)->str:
+        return self.folder
     def __repr__(self) -> str:
         return '{},{}'.format(self.history_data_first, self.history_data_second)
 
@@ -97,7 +99,7 @@ def prepare_dir(folder:str)->str:
 
 def init_history_data(is_dual_model: bool, selfplay_param:SelfplayParameter)->HistoryData:
     now = datetime.now()
-    path = prepare_dir(selfplay_param.history_folder) + '{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
+    path = prepare_dir(selfplay_param.history_folder) + '{:04}{:02}{:02}{:02}{:02}{:02}_history'.format(now.year, now.month, now.day, now.hour, now.minute, now.second)
     if not is_dual_model:
         return HistoryData(path)
     else:
@@ -147,7 +149,37 @@ def self_play_impl(
         second_brain.update_history(-value)
 
         history_data.serialize(first_brain.history, second_brain.history)
+        if selfplay_param.output_visualize_text:
+            folder = history_data.get_folder()
+            count = history_data.get_count() - 1
+            with open('{}/{:04}.txt'.format(folder, count), 'w') as f:
+                first_data = game_board.deserialize(first_brain.history)
+                second_data = game_board.deserialize(second_brain.history)
+                index_first = 0
+                index_second = 0
 
+                def output_data(tag, row, f):
+                    s, p, v = row
+                    f.write('{}, turn={}\n'.format(tag, row[0].get_turn()))
+                    f.write('{}'.format(s))
+                    f.write('policy={}\n'.format(p))
+                    f.write('value={}\n'.format(v))
+
+                while index_first < len(first_data) or index_second < len(second_data):
+                    if index_first < len(first_data) and index_second < len(second_data):
+                        if first_data[index_first][0].get_turn() < second_data[index_second][0].get_turn():
+                            output_data('first', first_data[index_first], f)
+                            index_first += 1
+                        else:
+                            output_data('second', second_data[index_second], f)
+                            index_second += 1
+                    else:
+                        if index_first < len(first_data):
+                            output_data('first', first_data[index_first], f)
+                            index_first += 1
+                        else:
+                            output_data('second', second_data[index_second], f)
+                            index_second += 1
         first_brain.reset()
         second_brain.reset()
 

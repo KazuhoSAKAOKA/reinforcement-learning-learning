@@ -59,6 +59,8 @@ def train_network(
         game_board : GameBoard, 
         epoch_count : int)->Tuple[Model, str]:
 
+    print('\ntrain start. load model={}'.format(load_model_path))
+
     model = tf.keras.models.load_model(load_model_path)
     history = history_data.deserialize()
     history = game_board.augmente_data(history)
@@ -286,7 +288,7 @@ def train_cycle(
                 model_file_postfix='first',
                 history_data=history_data.get_primary(),
                 game_board=game_board,
-                epoch_count=initial_selfplay_param.train_epoch))
+                epoch_count=selfplay_param.train_epoch))
             future_second = executor.submit(lambda: train_network(
                 load_model_path=best_model_file_second,
                 train_model_folder=train_model_folder,
@@ -294,7 +296,7 @@ def train_cycle(
                 model_file_postfix='second',
                 history_data=history_data.get_secondary(),
                 game_board=game_board,
-                epoch_count=initial_selfplay_param.train_epoch))
+                epoch_count=selfplay_param.train_epoch))
         else:
             future_first = executor.submit(lambda: train_network(
                 load_model_path=best_model_file,
